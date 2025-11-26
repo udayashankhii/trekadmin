@@ -1,90 +1,131 @@
-"use client";
 
-import React from "react";
-import { Formik } from "formik";
-import * as Yup from "yup";
+
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   Button,
   FormControl,
-  FormHelperText,
-  Stack,
   TextField,
   Typography,
   Box,
+  Paper,
+  Stack,
 } from "@mui/material";
 
-const adminLoginSchema = Yup.object().shape({
-  email: Yup.string().email("Invalid email").required("Email is required"),
-  password: Yup.string()
-    .min(8, "Password must be at least 8 characters")
-    .required("Password is required"),
-});
+const LoginAdminPanel = () => {
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-const AdminLoginForm = () => {
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/accounts/login/`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("accessToken", data.access);
+        localStorage.setItem("refreshToken", data.refresh);
+        localStorage.setItem("role", data.role);
+
+        toast.success("Login successful!");
+        setTimeout(() => {
+          navigate("/");
+          window.location.reload();
+        }, 1500);
+      } else {
+        toast.error(data.detail || "Invalid credentials");
+      }
+    } catch (error) {
+      toast.error("Error connecting to server.");
+    }
+
+    setLoading(false);
+  };
+
   return (
-    <Formik
-      initialValues={{ email: "", password: "" }}
-      validationSchema={adminLoginSchema}
-      onSubmit={(values, { setSubmitting }) => {
-        console.log("Admin login data:", values);
-        setSubmitting(false);
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: "#f5f5f5",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
       }}
     >
-      {(formik) => (
-        <Box
-          component="form"
-          onSubmit={formik.handleSubmit}
-          sx={{
-            maxWidth: 400,
-            margin: "auto",
-            padding: 4,
-            borderRadius: 2,
-            boxShadow: 3,
-            display: "flex",
-            flexDirection: "column",
-            gap: 3,
-            backgroundColor: "background.paper",
-          }}
+      <ToastContainer position="top-right" />
+      <Paper
+        elevation={8}
+        sx={{
+          maxWidth: 400,
+          width: "100%",
+          p: 4,
+          borderRadius: 3,
+          boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+        }}
+      >
+        <Typography
+          variant="h4"
+          color="text.primary"
+          textAlign="center"
+          mb={2}
         >
-          <Typography variant="h4" color="text.secondary" textAlign="center">
-            Admin Login
-          </Typography>
-
-          <FormControl fullWidth>
-            <TextField
-              label="Email"
-              type="email"
-              {...formik.getFieldProps("email")}
-              error={formik.touched.email && Boolean(formik.errors.email)}
-              helperText={formik.touched.email && formik.errors.email}
-            />
-          </FormControl>
-
-          <FormControl fullWidth>
-            <TextField
-              label="Password"
-              type="password"
-              {...formik.getFieldProps("password")}
-              error={formik.touched.password && Boolean(formik.errors.password)}
-              helperText={formik.touched.password && formik.errors.password}
-            />
-          </FormControl>
-
-          <Stack direction="row" justifyContent="center">
+          Admin Login
+        </Typography>
+        <form onSubmit={handleLogin}>
+          <Stack spacing={3}>
+            <FormControl fullWidth>
+              <TextField
+                label="Email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                autoComplete="username"
+              />
+            </FormControl>
+            <FormControl fullWidth>
+              <TextField
+                label="Password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                autoComplete="current-password"
+              />
+            </FormControl>
             <Button
               type="submit"
               variant="contained"
               color="primary"
-              disabled={formik.isSubmitting}
+              disabled={loading}
               fullWidth
             >
-              Login
+              {loading ? "Logging in..." : "Login"}
             </Button>
           </Stack>
-        </Box>
-      )}
-    </Formik>
+        </form>
+     
+      </Paper>
+    </Box>
   );
 };
 
-export default AdminLoginForm;
+export default LoginAdminPanel;
