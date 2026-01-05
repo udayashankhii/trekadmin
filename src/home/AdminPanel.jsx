@@ -4,7 +4,7 @@ import TopNavbar from "../navabr/TopNavbar";
 import AnalyticsPage from "./AnalyticsPage";
 import BookingsPage from "./BookingsPage";
 import DashboardPage from "./DashboardPage";
-import TreksPage from "./TreksPage";
+import TreksPage from "../treks/TreksPage";
 import UsersPage from "./UsersPage";
 import BlogPage from "./Blogs";
 

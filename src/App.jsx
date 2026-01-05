@@ -5,7 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import AdminPanel from "./home/AdminPanel";
 import DashboardPage from "./home/DashboardPage";
 import BookingsPage from "./home/BookingsPage";
-import TreksPage from "./home/TreksPage";
+import TreksPage from "./treks/TreksPage";
 import UsersPage from "./home/UsersPage";
 import AdminLoginForm from "./components/Login/LoginForm";
 import ProfileMenu from "./components/Profile/ProfileMenu";
