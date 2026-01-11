@@ -1,3 +1,4 @@
+// src/pages/model/TrekTable.jsx
 import React from "react";
 import { AlertCircle } from "lucide-react";
 import TrekTableRow from "./TrekTableRow";
@@ -43,7 +44,7 @@ const TrekTable = ({
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
             </th>
           </tr>
@@ -63,7 +64,7 @@ const TrekTable = ({
                   {!searchQuery && (
                     <button
                       onClick={onAddTrek}
-                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Upload Your First Trek
                     </button>

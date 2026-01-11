@@ -1,39 +1,32 @@
+// src/home/AdminPanel.jsx
 import { useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../navabr/Sidebar";
 import TopNavbar from "../navabr/TopNavbar";
-import AnalyticsPage from "./AnalyticsPage";
-import BookingsPage from "./BookingsPage";
-import DashboardPage from "./DashboardPage";
-import TreksPage from "../treks/TreksPage";
-import UsersPage from "./UsersPage";
-import BlogPage from "./Blogs";
 
 const AdminPanel = () => {
-  const [activeItem, setActiveItem] = useState('dashboard');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const location = useLocation();
 
+  // Get active item from current URL path
+  const getActiveItem = () => {
+    const path = location.pathname.split('/')[1]; // Get first segment after /
+    return path || 'dashboard';
+  };
+
+  const activeItem = getActiveItem();
+
+  // Get page title based on current route
   const getPageTitle = () => {
     const titles = {
       dashboard: { title: 'Admin Dashboard', subtitle: 'Welcome back, Admin' },
       treks: { title: 'Treks Management', subtitle: 'Manage all your trek packages' },
       bookings: { title: 'Bookings', subtitle: 'Track and manage all bookings' },
-      blogs: { title: 'Blogs Admin', subtitle: 'Review and manage blog stories' }, // ← Added blogs
+      blogs: { title: 'Blogs Admin', subtitle: 'Review and manage blog stories' },
       users: { title: 'Users Management', subtitle: 'Manage user accounts' },
       analytics: { title: 'Analytics', subtitle: 'View insights and reports' }
     };
     return titles[activeItem] || titles.dashboard;
-  };
-
-  const renderPage = () => {
-    switch (activeItem) {
-      case 'dashboard': return <DashboardPage />;
-      case 'treks': return <TreksPage />;
-      case 'bookings': return <BookingsPage />;
-      case 'blogs': return <BlogPage />; // ← Added blogs
-      case 'users': return <UsersPage />;
-      case 'analytics': return <AnalyticsPage />;
-      default: return <DashboardPage />;
-    }
   };
 
   const { title, subtitle } = getPageTitle();
@@ -42,7 +35,6 @@ const AdminPanel = () => {
     <div className="min-h-screen bg-slate-50">
       <Sidebar
         activeItem={activeItem}
-        setActiveItem={setActiveItem}
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
       />
@@ -53,7 +45,8 @@ const AdminPanel = () => {
       />
       <main className="lg:ml-64 pt-16">
         <div className="p-6 lg:p-8">
-          {renderPage()}
+          {/* 🔥 Outlet renders the child route components */}
+          <Outlet />
         </div>
       </main>
     </div>

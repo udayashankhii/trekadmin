@@ -1,75 +1,113 @@
-import React from "react";
-import { CheckCircle, XCircle } from "lucide-react";
+// src/components/model/UploadResults.jsx
+import React from 'react';
+import { CheckCircle2, XCircle, AlertTriangle, Eye, Trash2 } from 'lucide-react';
 
 const UploadResults = ({ results, onClear, onViewList }) => {
-  const successCount = results.filter((r) => r.success).length;
-  const failCount = results.length - successCount;
+  const successCount = results.filter(r => r.success).length;
+  const failCount = results.filter(r => !r.success).length;
+  const totalCount = results.length;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Upload Results</h3>
-        <button
-          onClick={onClear}
-          className="text-sm text-gray-600 hover:text-gray-900"
-        >
-          Clear Results
-        </button>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Upload Results
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {totalCount} trek{totalCount !== 1 ? 's' : ''} processed
+            </p>
+          </div>
+          
+          {/* Summary Stats */}
+          <div className="flex items-center gap-4">
+            {successCount > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-lg">
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  {successCount} successful
+                </span>
+              </div>
+            )}
+            
+            {failCount > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-100 text-red-800 rounded-lg">
+                <XCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  {failCount} failed
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2 max-h-96 overflow-y-auto">
-        {results.map((result, i) => (
+      {/* Results List */}
+      <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+        {results.map((result, index) => (
           <div
-            key={i}
-            className={`flex items-start gap-3 p-3 rounded-lg ${
-              result.success ? "bg-green-50" : "bg-red-50"
+            key={index}
+            className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${
+              result.success ? 'bg-white' : 'bg-red-50'
             }`}
           >
-            {result.success ? (
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            ) : (
-              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            )}
+            <div className="flex items-center gap-3 flex-1">
+              {/* Status Icon */}
+              {result.success ? (
+                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+              ) : (
+                <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              )}
 
-            <div className="flex-1 min-w-0">
-              <p
-                className={`font-medium ${
-                  result.success ? "text-green-900" : "text-red-900"
-                }`}
-              >
-                {result.trek || `Trek ${i + 1}`}
-              </p>
+              {/* Trek Info */}
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-medium text-gray-900 truncate">
+                  {result.trek}
+                </h4>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Slug: <span className="font-mono">{result.slug}</span>
+                </p>
+              </div>
 
-              {!result.success && result.message && (
-                <p className="text-sm text-red-700 mt-1 break-words">
+              {/* Message */}
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm ${
+                  result.success ? 'text-green-700' : 'text-red-700'
+                }`}>
                   {result.message}
                 </p>
-              )}
-
-              {result.success && result.message && (
-                <p className="text-sm text-green-700 mt-1">{result.message}</p>
-              )}
+                {result.action && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Action: {result.action}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Summary */}
-      <div className="mt-4 pt-4 border-t flex justify-between items-center">
-        <div className="text-sm">
-          <span className="text-green-600 font-medium">
-            {successCount} successful
-          </span>
-          <span className="text-gray-500 mx-2">•</span>
-          <span className="text-red-600 font-medium">{failCount} failed</span>
-        </div>
-
+      {/* Footer Actions */}
+      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
         <button
-          onClick={onViewList}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          onClick={onClear}
+          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          View Trek List
+          <Trash2 className="w-4 h-4" />
+          Clear Results
         </button>
+
+        {successCount > 0 && (
+          <button
+            onClick={onViewList}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Eye className="w-4 h-4" />
+            View Trek List
+          </button>
+        )}
       </div>
     </div>
   );

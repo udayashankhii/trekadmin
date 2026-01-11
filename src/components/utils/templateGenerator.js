@@ -142,6 +142,55 @@ export const FULL_IMPORT_TEMPLATE = {
   ],
 };
 
+export const BLOG_IMPORT_TEMPLATE = {
+  posts: [
+    {
+      slug: "everest-base-camp-trek-guide",
+      language: "en",
+      status: "published",
+      type: "blog",
+      contentType: "article",
+      title: "Everest Base Camp Trek Guide",
+      subtitle: "Everything you need to know",
+      metaTitle: "Everest Base Camp Trek Guide",
+      metaDescription: "Complete guide to the Everest Base Camp trek.",
+      description: "A practical overview of the route, seasons, and gear.",
+      excerpt: "Complete guide to the Everest Base Camp trek.",
+      categorySlug: "trekking",
+      regionSlug: "everest",
+      author: {
+        name: "Evertrek Nepal",
+        slug: "evertrek-nepal",
+      },
+      publishDate: new Date().toISOString(),
+      readTime: 8,
+      difficulty: "Moderate",
+      canonicalUrl: "https://example.com/blog/everest-base-camp-trek-guide",
+      image: "",
+      featuredImage: { url: "", alt: "", caption: "" },
+      images: [],
+      taxonomies: { focusKeyword: "everest base camp trek", tags: ["everest", "trekking"], keywords: [] },
+      contentSettings: { tocEnabled: true, tocMode: "auto", tocIncludeLevels: [2, 3] },
+      toc: [],
+      content: { format: "rich_blocks_v1", blocks: [] },
+      cta: { primary: { label: "", href: "" }, secondary: { label: "", href: "" } },
+      links: { internalLinks: [], backlinks: [] },
+      relatedPosts: [],
+      seo: {},
+      schema: { "@context": "https://schema.org", "@graph": [] },
+      social: {},
+      editorial: {},
+      views: 0,
+      likes: 0,
+      shares: 0,
+      isFeatured: false,
+      allowComments: true,
+      isLiked: false,
+      isBookmarked: false,
+    },
+  ],
+};
+
 export const downloadTemplate = (format = "json") => {
   try {
     if (format === "json") {
@@ -152,6 +201,28 @@ export const downloadTemplate = (format = "json") => {
       const a = document.createElement("a");
       a.href = url;
       a.download = `trek-import-template-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return { success: true };
+    }
+    return { success: false, error: "Unsupported format" };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const downloadBlogTemplate = (format = "json") => {
+  try {
+    if (format === "json") {
+      const blob = new Blob([JSON.stringify(BLOG_IMPORT_TEMPLATE, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `blog-import-template-${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

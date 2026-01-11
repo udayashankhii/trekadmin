@@ -1,61 +1,101 @@
-// ProfileMenu.jsx
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import Dropdown from "../ui/Dropdown";
+// src/pages/Profile.jsx
+import { useState } from 'react';
+import { useAdminAuth } from '../services/auth/AdminAuthService';
+import { User, Mail, Shield, Calendar } from 'lucide-react';
 
-const ProfileMenu = ({ user }) => {
-  const navigate = useNavigate();
-  const initials = user?.name
-    ? user.name.split(" ").map(word => word[0]).join("").toUpperCase()
-    : "A";
+const Profile = () => {
+  const { user, updateUser } = useAdminAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+  });
+
+  const handleSave = async () => {
+    // Call your update API here
+    updateUser(formData);
+    setIsEditing(false);
+  };
+
   return (
-    <Dropdown
-      trigger={
-        <button className="flex items-center gap-3 focus:outline-none">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-slate-900">
-              {user?.name || "Admin User"}
-            </p>
-            <p className="text-xs text-slate-500">
-              {user?.role || "Administrator"}
-            </p>
+    <div className="max-w-4xl mx-auto">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-8">
+          <div className="flex items-center gap-4">
+            <div className="h-20 w-20 rounded-full bg-white flex items-center justify-center text-blue-600 font-bold text-2xl">
+              {user?.name?.charAt(0).toUpperCase() || 'A'}
+            </div>
+            <div className="text-white">
+              <h1 className="text-2xl font-bold">{user?.name || 'Admin User'}</h1>
+              <p className="text-blue-100">{user?.email}</p>
+            </div>
           </div>
-          {user?.avatar ? (
-            <img src={user.avatar} alt="profile"
-              className="w-10 h-10 rounded-full object-cover border border-slate-200"/>
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">
-              {initials}
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* User Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+              <User className="h-5 w-5 text-gray-600" />
+              <div>
+                <p className="text-sm text-gray-600">Name</p>
+                <p className="font-semibold">{user?.name || 'Not set'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+              <Mail className="h-5 w-5 text-gray-600" />
+              <div>
+                <p className="text-sm text-gray-600">Email</p>
+                <p className="font-semibold">{user?.email}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+              <Shield className="h-5 w-5 text-gray-600" />
+              <div>
+                <p className="text-sm text-gray-600">Role</p>
+                <p className="font-semibold">
+                  {user?.is_superuser ? 'Super Admin' : user?.is_staff ? 'Staff' : 'Admin'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+              <Calendar className="h-5 w-5 text-gray-600" />
+              <div>
+                <p className="text-sm text-gray-600">Last Login</p>
+                <p className="font-semibold">
+                  {user?.last_login 
+                    ? new Date(user.last_login).toLocaleDateString() 
+                    : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Permissions */}
+          {user?.permissions && user.permissions.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Permissions</h3>
+              <div className="flex flex-wrap gap-2">
+                {user.permissions.map((permission, index) => (
+                  <span 
+                    key={index}
+                    className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                  >
+                    {permission}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
-        </button>
-      }
-    >
-      <div className="py-1">
-        <button
-          className="w-full px-4 py-2 text-sm text-left text-slate-700 hover:bg-slate-50"
-          onClick={() => navigate("/profile")}
-        >
-          View Profile
-        </button>
-        <button
-          className="w-full px-4 py-2 text-sm text-left text-slate-700 hover:bg-slate-50"
-          onClick={() => navigate("/settings")}
-        >
-          Settings
-        </button>
-        <button
-          className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50"
-          onClick={() => {
-            localStorage.clear();
-            navigate("/login");
-          }}
-        >
-          Logout
-        </button>
+        </div>
       </div>
-    </Dropdown>
+    </div>
   );
 };
 
-export default ProfileMenu;
+export default Profile;

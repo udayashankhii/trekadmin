@@ -15,6 +15,7 @@
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
     "@tailwindcss/vite": "^4.1.17",
+    "@uiw/react-json-view": "^2.0.0-alpha.40",
     "axios": "^1.13.2",
     "formik": "^2.4.9",
     "lucide-react": "^0.554.0",

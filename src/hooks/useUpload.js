@@ -1,4 +1,5 @@
-import { useState } from 'react';
+// src/hooks/useUpload.js
+import { useState, useCallback } from 'react';
 import { importFullTreksBulk } from '../components/api/admin.api';
 import { MAX_TREKS_PER_UPLOAD } from '../components/utils/constants';
 
@@ -7,9 +8,13 @@ export const useUpload = () => {
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [uploadResults, setUploadResults] = useState([]);
 
-  const upload = async (importData) => {
+  const upload = useCallback(async (importData) => {
+    const uploadId = Date.now();
+    console.log(`🚀 Upload ${uploadId}: Starting...`);
+    
     setUploading(true);
     setUploadResults([]);
+    setUploadProgress({ current: 0, total: 0 });
 
     try {
       // Validate structure
@@ -18,11 +23,11 @@ export const useUpload = () => {
       }
 
       if (!importData.meta) {
-        throw new Error("Invalid import format. Missing 'meta' field.");
+        throw new Error("Missing required field: 'meta'");
       }
 
       if (!importData.treks) {
-        throw new Error("Invalid import format. Missing 'treks' field.");
+        throw new Error("Missing required field: 'treks'");
       }
 
       const treksCount = Array.isArray(importData.treks) ? importData.treks.length : 0;
@@ -32,97 +37,91 @@ export const useUpload = () => {
       }
 
       if (treksCount > MAX_TREKS_PER_UPLOAD) {
-        throw new Error(`Cannot upload more than ${MAX_TREKS_PER_UPLOAD} treks at once. You have ${treksCount} treks.`);
+        throw new Error(
+          `Cannot upload more than ${MAX_TREKS_PER_UPLOAD} treks at once. ` +
+          `Found ${treksCount} treks. Please split into smaller batches.`
+        );
       }
 
       console.log(`📤 Uploading ${treksCount} trek(s)...`);
-      console.log("📦 Import Data Structure:", {
-        meta: importData.meta,
-        regionsCount: importData.regions?.length || 0,
-        treksCount,
-        firstTrek: importData.treks[0]?.slug
-      });
-
+      
       setUploadProgress({ current: 0, total: treksCount });
 
+      // Upload
       const result = await importFullTreksBulk(
         importData,
-        setUploadProgress
+        (progress) => setUploadProgress(progress)
       );
 
-      console.log("✅ Upload Result:", result);
-
-      const { results = [], stats = {}, errors = [] } = result;
-
-      setUploadResults(results);
-
-      const successCount = results.filter((r) => r.success).length;
-      const failCount = results.length - successCount;
-
-      // Log detailed errors if any
-      if (errors.length > 0) {
-        console.error("❌ Upload Errors:", errors);
-        errors.forEach((err, idx) => {
-          console.error(`  Error ${idx + 1}:`, {
-            trek: err.trek || 'Unknown',
-            message: err.message || err.error || err
-          });
-        });
-      }
-
-      // Log stats
-      if (stats) {
-        console.log("📊 Upload Stats:", stats);
-      }
-
-      return {
-        success: failCount === 0,
-        successCount,
-        failCount,
-        stats,
-        errors,
-      };
-    } catch (error) {
-      console.error("❌ Upload Error:", {
-        message: error.message,
-        status: error.status,
-        data: error.data,
-        stack: error.stack
+      // ⭐ FIX: Enhanced logging
+      console.log(`✅ Upload ${uploadId}: Complete`, {
+        success: result.success,
+        importOk: result.importOk,
+        successCount: result.successCount,
+        failCount: result.failCount,
+        stats: result.stats,
+        errors: result.errors?.length || 0,
+        warnings: result.warnings?.length || 0
       });
 
-      // Extract detailed error message
-      let errorMessage = error.message || "Upload failed";
-      
-      if (error.data) {
-        // Django validation errors
-        if (error.data.detail) {
-          errorMessage = error.data.detail;
-        } else if (error.data.errors) {
-          // Field-specific errors
-          const fieldErrors = Object.entries(error.data.errors)
-            .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
-            .join('; ');
-          errorMessage = `Validation errors: ${fieldErrors}`;
-        } else if (typeof error.data === 'string') {
-          errorMessage = error.data;
-        }
+      // ⭐ FIX: Log individual results
+      if (result.results && result.results.length > 0) {
+        console.table(result.results.map(r => ({
+          Trek: r.trek,
+          Slug: r.slug,
+          Success: r.success ? '✅' : '❌',
+          Message: r.message
+        })));
       }
+
+      setUploadResults(result.results);
+
+      return {
+        success: result.success,
+        successCount: result.successCount,
+        failCount: result.failCount,
+        stats: result.stats,
+        errors: result.errors,
+        warnings: result.warnings,
+        results: result.results,
+        duration: result.duration,
+        importOk: result.importOk,
+      };
+      
+    } catch (error) {
+      console.error(`❌ Upload ${uploadId}: Failed`, error);
+
+      const errorMessage = error.message || "Upload failed";
+      const treksCount = importData?.treks?.length || 0;
+      
+      // Create error results
+      const errorResults = (importData.treks || []).map((trek, i) => ({
+        trek: trek?.title || trek?.slug || `Trek ${i + 1}`,
+        slug: trek?.slug,
+        success: false,
+        message: errorMessage,
+      }));
+      
+      setUploadResults(errorResults);
 
       return {
         success: false,
         error: errorMessage,
         successCount: 0,
-        failCount: 0
+        failCount: treksCount,
+        results: errorResults,
+        importOk: false,
       };
+      
     } finally {
       setUploading(false);
     }
-  };
+  }, []);
 
-  const clearResults = () => {
+  const clearResults = useCallback(() => {
     setUploadResults([]);
     setUploadProgress({ current: 0, total: 0 });
-  };
+  }, []);
 
   return {
     uploading,

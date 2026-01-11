@@ -1,88 +1,89 @@
-import React from 'react';
-import {
-  LayoutDashboard,
-  Mountain,
-  Calendar,
-  Users,
+// src/navabr/Sidebar.jsx
+import { NavLink } from "react-router-dom";
+import { 
+  LayoutDashboard, 
+  Mountain, 
+  Calendar, 
+  Users, 
   BarChart3,
-  X,
-  BookOpen,
-} from 'lucide-react';
+  FileText,
+  X 
+} from "lucide-react";
 
-const Sidebar = ({
-  activeItem,
-  setActiveItem,
-  isMobileOpen,
-  setIsMobileOpen,
-}) => {
-  const menuItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'treks', icon: Mountain, label: 'Treks' },
-    { id: 'bookings', icon: Calendar, label: 'Bookings' },
-     { id: 'blogs', icon: BookOpen, label: 'Blogs' },
-    { id: 'users', icon: Users, label: 'Users' },
-    { id: 'analytics', icon: BarChart3, label: 'Analytics' },
+const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
+  const navItems = [
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
+    { path: "/treks", icon: Mountain, label: "Treks", key: "treks" },
+    { path: "/bookings", icon: Calendar, label: "Bookings", key: "bookings" },
+    { path: "/blogs", icon: FileText, label: "Blogs", key: "blogs" },
+    { path: "/users", icon: Users, label: "Users", key: "users" },
+    { path: "/analytics", icon: BarChart3, label: "Analytics", key: "analytics" },
   ];
 
   return (
     <>
+      {/* Mobile Overlay */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
+      {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-slate-800 z-50 transform
-          transition-transform duration-300 ease-in-out
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
+        className={`fixed top-0 left-0 z-50 h-screen w-64 bg-slate-800 text-white transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
-        {/* Header */}
-        <div className="flex items-center gap-2 h-16 px-6 border-b border-slate-700">
-          <img src="/logo.webp" alt="EvertrekNepal Logo" className="w-21 h-15" />
+        {/* Logo Section */}
+      <div className="flex items-center justify-between p-5 border-b border-slate-700">
+  <div className="flex items-center gap-1">
+    <div className="w-23 h-22 rounded-lg overflow-hidden">
+      <img 
+        src="/logo.webp" 
+        alt="EverTrekNepal Logo" 
+        className="w-full h-full object-cover"
+      />
+    </div>
+    <span className="text-xl font-bold">EverTrekNepal</span>
+  </div>
 
-          <h1 className="text-xl font-bold text-white">EverTrekNepal</h1>
 
+          {/* Mobile Close Button */}
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden ml-auto text-slate-400 hover:text-white"
+            className="lg:hidden text-gray-400 hover:text-white"
           >
-            <X size={20} />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Menu */}
-        <nav className="p-4 space-y-1">
-          {menuItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveItem(item.id);
-                setIsMobileOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg
-                text-sm font-medium transition-all
-                ${
-                  activeItem === item.id
-                    ? 'bg-teal-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                }
-              `}
+        {/* Navigation */}
+        <nav className="mt-6 px-3">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.key}
+              to={item.path}
+              onClick={() => setIsMobileOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 mb-1 rounded-lg transition-all duration-200 ${
+                  isActive
+                    ? "bg-teal-600 text-white shadow-lg"
+                    : "text-gray-300 hover:bg-slate-700 hover:text-white"
+                }`
+              }
             >
-              <item.icon size={20} />
-              {item.label}
-            </button>
+              <item.icon className="w-5 h-5" />
+              <span className="font-medium">{item.label}</span>
+            </NavLink>
           ))}
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
-          <div className="text-xs text-slate-400">
-            <p>© 2025 EverTrekNepal</p>
-            <p>Version 1.0.0</p>
-          </div>
+        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-700">
+          <p className="text-xs text-gray-400">© 2025 EverTrekNepal</p>
+          <p className="text-xs text-gray-500">Version 1.0.0</p>
         </div>
       </aside>
     </>
