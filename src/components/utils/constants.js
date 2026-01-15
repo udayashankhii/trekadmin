@@ -20,3 +20,4 @@ export const API_ENDPOINTS = {
   TREKS_SEARCH: '/treks/',
   IMPORT_FULL: '/import/full/',
 };
+export const MAX_TOURS_PER_UPLOAD = 100;

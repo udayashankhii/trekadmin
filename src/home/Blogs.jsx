@@ -29,9 +29,13 @@ import {
 import UploadCard from "../treks/model/UploadCard";
 import BlogUploadResults from "../components/blog/BlogUploadResults";
 import BlogUploadInstructions from "../components/blog/BlogUploadInstructions";
-import { validateFile, readFileAsText, parseJSON } from "../components/utils/fileValidation";
-import { downloadBlogTemplate } from "../components/utils/templateGenerator";
 
+import { 
+  validateBlogFile, 
+  readBlogFileAsText, 
+  parseBlogJSON 
+} from "../components/utils/blogFileValidation";
+import { downloadBlogTemplate } from "../components/utils/blogTempleteGenerator";
 const statusLabel = (value) => {
   const normalized = (value || "").toLowerCase();
   if (normalized === "published") return "Published";
@@ -245,73 +249,85 @@ const BlogPage = () => {
     }
   };
 
-  const handleBlogJsonUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+ const handleBlogJsonUpload = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
 
-    const validation = validateFile(file, "json");
-    if (!validation.valid) {
-      setError(validation.error);
+  // ✅ Use blog-specific validation
+  const validation = validateBlogFile(file, "json");
+  if (!validation.valid) {
+    setError(validation.error);
+    event.target.value = "";
+    return;
+  }
+
+  setUploading(true);
+  setError("");
+  setUploadResults([]);
+
+  try {
+    // ✅ Use blog-specific file reader
+    const text = await readBlogFileAsText(file);
+    
+    // ✅ Use blog-specific JSON parser
+    const parsed = parseBlogJSON(text);
+
+    if (!parsed.success) {
+      setError(`Invalid JSON format: ${parsed.error}`);
       event.target.value = "";
+      setUploading(false);
       return;
     }
 
-    setUploading(true);
-    setError("");
-    setUploadResults([]);
+    console.log("🔍 Detected format:", parsed.importType);
+    console.log("📦 Normalized payload:", parsed.data);
 
-    try {
-      const text = await readFileAsText(file);
-      const parsed = parseJSON(text);
+    // ✅ Send normalized payload to backend
+    const response = await importBlogPosts(parsed.data);
 
-      if (!parsed.success) {
-        setError(`Invalid JSON format: ${parsed.error}`);
-        event.target.value = "";
-        return;
-      }
+    const created = response?.created || 0;
+    const updated = response?.updated || 0;
+    const errors = response?.errors || [];
 
-      const response = await importBlogPosts(parsed.data);
-      const created = response?.created || 0;
-      const updated = response?.updated || 0;
-      const errors = response?.errors || [];
-
-      const results = [];
-      if (created || updated) {
-        results.push({
-          post: "Blog import summary",
-          success: true,
-          message: `Created: ${created}, Updated: ${updated}`,
-        });
-      }
-
-      errors.forEach((err, index) => {
-        results.push({
-          post: err?.slug || (typeof err?.index === "number" ? `Post ${err.index + 1}` : `Post ${index + 1}`),
-          success: false,
-          message: err?.detail || err?.message || "Import failed",
-        });
+    const results = [];
+    if (created || updated) {
+      results.push({
+        post: "Blog import summary",
+        success: true,
+        message: `Created: ${created}, Updated: ${updated}`,
       });
-
-      if (!results.length) {
-        results.push({
-          post: "Blog import",
-          success: response?.ok === true,
-          message: response?.ok ? "Import completed" : "Import failed",
-        });
-      }
-
-      setUploadResults(results);
-      await loadPosts(1);
-    } catch (err) {
-      setError(err?.message || "Failed to import blog posts.");
-      setUploadResults([
-        { post: "Blog import", success: false, message: err?.message || "Import failed" },
-      ]);
-    } finally {
-      setUploading(false);
-      event.target.value = "";
     }
-  };
+
+    errors.forEach((err, index) => {
+      results.push({
+        post: err?.slug || (typeof err?.index === "number" ? `Post ${err.index + 1}` : `Post ${index + 1}`),
+        success: false,
+        message: err?.detail || err?.message || "Import failed",
+      });
+    });
+
+    if (!results.length) {
+      results.push({
+        post: "Blog import",
+        success: response?.ok === true,
+        message: response?.ok ? "Import completed" : "Import failed",
+      });
+    }
+
+    setUploadResults(results);
+    await loadPosts(1);
+  } catch (err) {
+    console.error("❌ Blog import error:", err);
+    setError(err?.message || "Failed to import blog posts.");
+    setUploadResults([
+      { post: "Blog import", success: false, message: err?.message || "Import failed" },
+    ]);
+  } finally {
+    setUploading(false);
+    event.target.value = "";
+  }
+};
+
 
   const handleDownloadTemplate = () => {
     const result = downloadBlogTemplate("json");

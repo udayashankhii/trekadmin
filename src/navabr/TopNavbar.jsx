@@ -1,14 +1,16 @@
 // src/navbar/TopNavbar.jsx
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Bell, Search, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Menu, Bell, User, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { useAdminAuth } from '../components/api/admin.service';
 import { useNavigate } from 'react-router-dom';
+
 
 const TopNavbar = ({ setIsMobileOpen, title, subtitle }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, logout, isAuthenticated } = useAdminAuth();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -18,15 +20,18 @@ const TopNavbar = ({ setIsMobileOpen, title, subtitle }) => {
       }
     };
 
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
 
 const handleLogout = async () => {
   setShowProfileMenu(false); // Close dropdown first
   await logout(); // This clears tokens
   // navigate('/login') will happen automatically via AdminProtectedRoute
 };
+
 
   // Get user initials for avatar
   const getUserInitials = () => {
@@ -39,10 +44,12 @@ const handleLogout = async () => {
     return 'A';
   };
 
+
   // Get display name
   const getDisplayName = () => {
     return user?.name || user?.username || 'Admin User';
   };
+
 
   // Get user role
   const getUserRole = () => {
@@ -50,6 +57,7 @@ const handleLogout = async () => {
     if (user?.is_staff) return 'Staff';
     return user?.role || 'Administrator';
   };
+
 
   return (
     <nav className="fixed top-0 right-0 left-0 lg:left-64 bg-white border-b border-gray-200 z-30">
@@ -71,13 +79,12 @@ const handleLogout = async () => {
             </div>
           </div>
 
+
           {/* Right side - Search, Notifications, Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Search - Hidden on mobile */}
-            <button className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
-              <Search className="h-4 w-4 text-gray-600" />
-              <span className="text-sm text-gray-600">Search...</span>
-            </button>
+     
+
 
             {/* Notifications */}
             <button 
@@ -87,6 +94,7 @@ const handleLogout = async () => {
               <Bell className="h-5 w-5 text-gray-600" />
               <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
             </button>
+
 
             {/* Profile Dropdown */}
             {isAuthenticated && (
@@ -112,8 +120,10 @@ const handleLogout = async () => {
                     </p>
                   </div>
 
+
                   <ChevronDown className={`h-4 w-4 text-gray-600 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
                 </button>
+
 
                 {/* Dropdown Menu */}
                 {showProfileMenu && (
@@ -131,6 +141,7 @@ const handleLogout = async () => {
                       </span>
                     </div>
 
+
                     {/* Menu Items */}
                     <div className="py-2">
                       <button
@@ -144,6 +155,7 @@ const handleLogout = async () => {
                         View Profile
                       </button>
 
+
                       <button
                         onClick={() => {
                           setShowProfileMenu(false);
@@ -156,7 +168,9 @@ const handleLogout = async () => {
                       </button>
                     </div>
 
+
                     <hr className="my-2" />
+
 
                     {/* Logout */}
                     <button
@@ -176,5 +190,6 @@ const handleLogout = async () => {
     </nav>
   );
 };
+
 
 export default TopNavbar;

@@ -32,7 +32,6 @@ const LoginForm = () => {
 
   const [loading, setLoading] = useState(false);
 
-  // Email validation regex
   const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -65,11 +64,27 @@ const LoginForm = () => {
     if (!trimmedPassword) {
       newErrors.password = "Password is required";
     } else if (trimmedPassword.length < 3) {
-      newErrors.password = "Password is too short";
+      newErrors.password = "Password must be at least 3 characters";
     }
 
     setErrors(newErrors);
     return !newErrors.email && !newErrors.password;
+  };
+
+  const getErrorMessage = (error) => {
+    if (error.status === 400) {
+      const detail = error.data?.detail;
+      if (detail) return detail;
+      if (error.data?.email) return `Email: ${error.data.email.join(", ")}`;
+      if (error.data?.password) return `Password: ${error.data.password.join(", ")}`;
+      if (error.message) return error.message;
+    }
+    
+    if (error.status === 401) return "Invalid credentials. Please check your email and password.";
+    if (error.status === 403) return "Access denied. Admin access required.";
+    if (error.message) return error.message;
+    
+    return "Login failed. Please try again.";
   };
 
   const handleSubmit = async (e) => {
@@ -86,51 +101,19 @@ const LoginForm = () => {
       const trimmedEmail = formData.email.trim();
       const trimmedPassword = formData.password.trim();
 
-      console.log("🔵 Attempting login with:", { 
-        email: trimmedEmail,
-        passwordLength: trimmedPassword.length 
-      });
-
       const result = await login(trimmedEmail, trimmedPassword);
 
       if (result.success) {
-        console.log("✅ Login successful:", result);
         toast.success("Login successful! Redirecting...");
-
-        // Navigate immediately after successful login
         setTimeout(() => {
           navigate("/dashboard", { replace: true });
         }, 300);
       } else {
-        // Handle login failure
-        const errorMessage = result.error || "Login failed";
-        console.error("❌ Login failed:", errorMessage);
+        const errorMessage = result.error || "Login failed. Please try again.";
         toast.error(errorMessage);
       }
     } catch (error) {
-      console.error("❌ Login error:", error);
-      
-      let errorMessage = "Login failed";
-      
-      if (error.status === 400) {
-        const detail = error.data?.detail;
-        if (detail) {
-          errorMessage = detail;
-        } else if (error.data?.email) {
-          errorMessage = `Email: ${error.data.email.join(", ")}`;
-        } else if (error.data?.password) {
-          errorMessage = `Password: ${error.data.password.join(", ")}`;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-      } else if (error.status === 401) {
-        errorMessage = "Invalid credentials";
-      } else if (error.status === 403) {
-        errorMessage = "Access denied. Admin access required.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
+      const errorMessage = getErrorMessage(error);
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -148,7 +131,14 @@ const LoginForm = () => {
         padding: 2,
       }}
     >
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000}
+        hideProgressBar={false}
+        closeOnClick
+        pauseOnHover
+        draggable
+      />
 
       <Paper
         elevation={6}
@@ -192,6 +182,10 @@ const LoginForm = () => {
               autoComplete="username"
               disabled={loading}
               placeholder="admin@example.com"
+              inputProps={{
+                'aria-label': 'Email address',
+                'aria-required': 'true',
+              }}
             />
 
             <TextField
@@ -206,6 +200,10 @@ const LoginForm = () => {
               fullWidth
               autoComplete="current-password"
               disabled={loading}
+              inputProps={{
+                'aria-label': 'Password',
+                'aria-required': 'true',
+              }}
             />
 
             <Button
@@ -215,6 +213,7 @@ const LoginForm = () => {
               disabled={loading}
               fullWidth
               sx={{ height: 48 }}
+              aria-label={loading ? "Logging in" : "Login"}
             >
               {loading ? (
                 <CircularProgress size={24} color="inherit" />

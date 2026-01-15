@@ -4,9 +4,11 @@ import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../navabr/Sidebar";
 import TopNavbar from "../navabr/TopNavbar";
 
+
 const AdminPanel = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
+
 
   // Get active item from current URL path
   const getActiveItem = () => {
@@ -14,13 +16,16 @@ const AdminPanel = () => {
     return path || 'dashboard';
   };
 
+
   const activeItem = getActiveItem();
+
 
   // Get page title based on current route
   const getPageTitle = () => {
     const titles = {
       dashboard: { title: 'Admin Dashboard', subtitle: 'Welcome back, Admin' },
       treks: { title: 'Treks Management', subtitle: 'Manage all your trek packages' },
+      tours: { title: 'Tours Management', subtitle: 'Manage all your tour packages' },
       bookings: { title: 'Bookings', subtitle: 'Track and manage all bookings' },
       blogs: { title: 'Blogs Admin', subtitle: 'Review and manage blog stories' },
       users: { title: 'Users Management', subtitle: 'Manage user accounts' },
@@ -29,7 +34,9 @@ const AdminPanel = () => {
     return titles[activeItem] || titles.dashboard;
   };
 
+
   const { title, subtitle } = getPageTitle();
+
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -52,5 +59,6 @@ const AdminPanel = () => {
     </div>
   );
 };
+
 
 export default AdminPanel;

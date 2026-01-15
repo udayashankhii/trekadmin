@@ -1,4 +1,4 @@
-// src/navabr/Sidebar.jsx
+// src/navbar/Sidebar.jsx
 import { NavLink } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -7,18 +7,22 @@ import {
   Users, 
   BarChart3,
   FileText,
-  X 
+  X,
+  Plane
 } from "lucide-react";
+
 
 const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
   const navItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
     { path: "/treks", icon: Mountain, label: "Treks", key: "treks" },
+    { path: "/tours", icon: Plane, label: "Tours", key: "tours" },
     { path: "/bookings", icon: Calendar, label: "Bookings", key: "bookings" },
     { path: "/blogs", icon: FileText, label: "Blogs", key: "blogs" },
     { path: "/users", icon: Users, label: "Users", key: "users" },
     { path: "/analytics", icon: BarChart3, label: "Analytics", key: "analytics" },
   ];
+
 
   return (
     <>
@@ -29,6 +33,7 @@ const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
           onClick={() => setIsMobileOpen(false)}
         />
       )}
+
 
       {/* Sidebar */}
       <aside
@@ -50,6 +55,7 @@ const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
   </div>
 
 
+
           {/* Mobile Close Button */}
           <button
             onClick={() => setIsMobileOpen(false)}
@@ -58,6 +64,7 @@ const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
             <X className="w-5 h-5" />
           </button>
         </div>
+
 
         {/* Navigation */}
         <nav className="mt-6 px-3">
@@ -80,6 +87,7 @@ const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
           ))}
         </nav>
 
+
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-700">
           <p className="text-xs text-gray-400">© 2025 EverTrekNepal</p>
@@ -89,5 +97,6 @@ const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
     </>
   );
 };
+
 
 export default Sidebar;
