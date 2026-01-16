@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 15000,
+  baseURL: import.meta.env.VITE_ADMIN_API_BASE_URL, // ✅ use admin URL
+  timeout: import.meta.env.VITE_API_TIMEOUT || 15000,
   headers: {
     "Content-Type": "application/json",
   },
