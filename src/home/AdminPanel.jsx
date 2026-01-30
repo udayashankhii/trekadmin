@@ -22,17 +22,21 @@ const AdminPanel = () => {
 
   // Get page title based on current route
   const getPageTitle = () => {
-    const titles = {
-      dashboard: { title: 'Admin Dashboard', subtitle: 'Welcome back, Admin' },
-      treks: { title: 'Treks Management', subtitle: 'Manage all your trek packages' },
-      tours: { title: 'Tours Management', subtitle: 'Manage all your tour packages' },
-      bookings: { title: 'Bookings', subtitle: 'Track and manage all bookings' },
-      blogs: { title: 'Blogs Admin', subtitle: 'Review and manage blog stories' },
-      users: { title: 'Users Management', subtitle: 'Manage user accounts' },
-      analytics: { title: 'Analytics', subtitle: 'View insights and reports' }
-    };
-    return titles[activeItem] || titles.dashboard;
+     const titles = {
+    dashboard: { title: 'Admin Dashboard', subtitle: 'Welcome back, Admin' },
+    treks: { title: 'Treks Management', subtitle: 'Manage all your trek packages' },
+    tours: { title: 'Tours Management', subtitle: 'Manage all your tour packages' },
+    bookings: { title: 'Bookings', subtitle: 'Track and manage all bookings' },
+    blogs: { title: 'Blogs Admin', subtitle: 'Review and manage blog stories' },
+    users: { title: 'Users Management', subtitle: 'Manage user accounts' },
+    analytics: { title: 'Analytics', subtitle: 'View insights and reports' },
+    cloudinary: { title: 'Cloudinary Import', subtitle: 'Import Cloudinary images' },
+    "customize-trip": { title: 'Customize Trip Requests', subtitle: 'Manage tailored trek enquiries' },
+    "travel-styles": { title: 'Travel Styles Admin', subtitle: 'Manage travel styles and collections' },
+    "travel-info": { title: 'Travel Info Admin', subtitle: 'Manage travel information content' },
   };
+  return titles[activeItem] || titles.dashboard;
+};
 
 
   const { title, subtitle } = getPageTitle();

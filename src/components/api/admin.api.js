@@ -220,14 +220,17 @@ function parseValidationErrors(errors) {
   let summary = "";
 
   if (Array.isArray(errors)) {
-    summary = errors.join("; ");
+    // Handle array of objects or strings
+    summary = errors.map(e => typeof e === 'object' ? (e.message || e.detail || JSON.stringify(e)) : e).join("; ");
     errors.forEach((err, idx) => {
-      details.push({ field: `Error ${idx + 1}`, message: err });
+      details.push({ field: `Error ${idx + 1}`, message: typeof err === 'object' ? (err.message || JSON.stringify(err)) : err });
     });
   } else if (typeof errors === "object") {
     Object.entries(errors).forEach(([field, messages]) => {
       const msgs = Array.isArray(messages) ? messages : [messages];
-      details.push({ field, message: msgs.join(", ") });
+      // FIX: Ensure we map objects to strings
+      const msgString = msgs.map(m => typeof m === 'object' ? (m.message || JSON.stringify(m)) : m).join(", ");
+      details.push({ field, message: msgString });
     });
     summary = details.map((d) => `${d.field}: ${d.message}`).join("; ");
   } else {
@@ -236,6 +239,7 @@ function parseValidationErrors(errors) {
 
   return { summary, details };
 }
+
 
 function validateImportPayload(payload) {
   if (!payload || typeof payload !== "object") {
@@ -381,14 +385,14 @@ export async function searchAdminTreks(query) {
   });
 }
 
-export async function deleteAdminTrek(slug) {
-  try {
-    const response = await adminApi.delete(`/import/full/${slug}/`);
-    return { success: true, data: response };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+export const deleteTrekApi = async (slug, token) => {
+  return axios.delete(`${ADMIN_API_BASE}/treks/${slug}/`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }
+
 /**
  * Get all tours for admin list view
  * GET /api/admin/tours-list/
@@ -801,3 +805,130 @@ export function importBlogPostBySlug(slug, payload, params = {}) {
 }
 
 export default adminApi;
+
+export const importCloudinaryImages = async (payload) => {
+  const token = localStorage.getItem('token'); // or 'admin_token' - check what you use
+  
+  const response = await fetch('http://localhost:8000/api/admin/cloudinary/import/', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to import Cloudinary images');
+  }
+
+  return response.json();
+};
+
+
+
+
+// ==============================================
+// TRAVEL INFO API METHODS (add after Blog section)
+// ==============================================
+
+export function getAdminTravelInfoPages(params = {}) {
+  return adminApi.get("/travel-info/", { params });
+}
+
+export function getAdminTravelInfoPage(slug) {
+  return adminApi.get(`/travel-info/${slug}/`);
+}
+
+export function createAdminTravelInfoPage(payload) {
+  return adminApi.post("/travel-info/", payload);
+}
+
+export function updateAdminTravelInfoPage(slug, payload) {
+  return adminApi.patch(`/travel-info/${slug}/`, payload);
+}
+
+export function deleteAdminTravelInfoPage(slug) {
+  return adminApi.delete(`/travel-info/${slug}/`);
+}
+
+// ==============================================
+// TRAVEL STYLES API METHODS
+// ==============================================
+
+export function getAdminTravelStyles(params = {}) {
+  return adminApi.get("/travel-styles/", { params });
+}
+
+export function getAdminTravelStyle(slug) {
+  return adminApi.get(`/travel-styles/${slug}/`);
+}
+
+export function createAdminTravelStyle(payload) {
+  return adminApi.post("/travel-styles/", payload);
+}
+
+export function updateAdminTravelStyle(slug, payload) {
+  return adminApi.patch(`/travel-styles/${slug}/`, payload);
+}
+
+export function deleteAdminTravelStyle(slug) {
+  return adminApi.delete(`/travel-styles/${slug}/`);
+}
+
+export function importAdminTravelStyles(payload, config = {}) {
+  const isForm = payload instanceof FormData;
+  const headers = { ...(config.headers || {}) };
+  if (isForm) {
+    headers["Content-Type"] = undefined;
+  }
+  return adminApi.post("/travel-styles/import/full/", payload, {
+    ...config,
+    headers,
+  });
+}
+
+export function importAdminTravelStyleBySlug(slug, payload, config = {}) {
+  const isForm = payload instanceof FormData;
+  const headers = { ...(config.headers || {}) };
+  if (isForm) {
+    headers["Content-Type"] = undefined;
+  }
+  return adminApi.patch(`/travel-styles/import/full/${slug}/`, payload, {
+    ...config,
+    headers,
+  });
+}
+
+export function getAdminTravelStyleTours(slug) {
+  return adminApi.get(`/travel-styles/${slug}/tours/`);
+}
+
+// ==============================================
+// ABOUT PAGES API METHODS
+// ==============================================
+
+export function getAdminAboutPages(params = {}) {
+  return adminApi.get("/about-pages/", { params });
+}
+
+export function getAdminAboutPage(slug) {
+  return adminApi.get(`/about-pages/${slug}/`);
+}
+
+export function createAdminAboutPage(payload) {
+  return adminApi.post("/about-pages/", payload);
+}
+
+export function updateAdminAboutPage(slug, payload) {
+  return adminApi.patch(`/about-pages/${slug}/`, payload);
+}
+
+export function deleteAdminAboutPage(slug) {
+  return adminApi.delete(`/about-pages/${slug}/`);
+}
+
+export function importAdminAboutPages(payload, config = {}) {
+  return adminApi.post("/about-pages/import/full/", payload, config);
+}

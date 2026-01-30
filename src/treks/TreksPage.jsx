@@ -163,35 +163,28 @@ const handleEdit = (trek) => {
 
 
   // Handle delete trek
-  const handleDelete = (trek) => {
-    setConfirmModal({
-      show: true,
-      title: "Delete Trek",
-      message: `Are you sure you want to delete "${trek.name}"? This action cannot be undone.`,
-      onConfirm: async () => {
-        showToast(`Deleting ${trek.name}...`, TOAST_TYPES.INFO);
-        setConfirmModal({ ...confirmModal, show: false });
+const handleDelete = (trek) => {
+  setConfirmModal({
+    show: true,
+    title: "Delete Trek",
+    message: `Are you sure you want to delete "${trek.name}"? This action cannot be undone.`,
+    onConfirm: async () => {
+      setConfirmModal(prev => ({ ...prev, show: false })); // close modal first
+      showToast(`Deleting ${trek.name}...`, TOAST_TYPES.INFO);
 
-        const result = await deleteTrek(trek.slug);
+      const result = await deleteTrek(trek.slug);
 
-        if (result.success) {
-          showToast(
-            `Successfully deleted ${trek.name}`, 
-            TOAST_TYPES.SUCCESS
-          );
-          
-          setTimeout(async () => {
-            await loadTreks();
-          }, 300);
-        } else {
-          showToast(
-            `Failed to delete ${trek.name}: ${result.error}`,
-            TOAST_TYPES.ERROR
-          );
-        }
-      },
-    });
-  };
+      if (result.success) {
+        // Update treks state immediately for UI
+        setTreks(prev => prev.filter(t => t.slug !== trek.slug));
+        showToast(`Successfully deleted ${trek.name}`, TOAST_TYPES.SUCCESS);
+      } else {
+        showToast(`Failed to delete ${trek.name}: ${result.error}`, TOAST_TYPES.ERROR);
+      }
+    },
+  });
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
