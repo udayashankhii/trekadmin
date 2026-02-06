@@ -48,18 +48,28 @@ const fetchBookings = useCallback(
   // -----------------------------
   // Fetch single booking by reference
   // -----------------------------
-  const fetchBookingByRef = useCallback(
-    async (bookingRef) => {
-      try {
-        const data = await bookingsApi.getBookingByRef(bookingRef);
-        return data;
-      } catch (err) {
-        console.error("❌ Error fetching booking:", err);
-        throw new Error("Failed to fetch booking");
-      }
-    },
-    []
-  );
+// ✅ CORRECTED CODE
+const fetchBookingByRef = useCallback(
+  async (bookingRef) => {
+    try {
+      console.log("🔍 Fetching booking detail for:", bookingRef);
+      const response = await bookingsApi.getBookingByRef(bookingRef);
+      
+      // ✅ Properly unwrap axios response
+      const data = response.data;
+      console.log("✅ Booking detail fetched:", data);
+      
+      return data;
+    } catch (err) {
+      console.error("❌ Error fetching booking detail:", err);
+      const msg = err.response?.data?.detail || err.message || "Failed to fetch booking";
+      showToast(msg, TOAST_TYPES.ERROR);
+      throw err;
+    }
+  },
+  [showToast]
+);
+
 
   // -----------------------------
   // Update booking

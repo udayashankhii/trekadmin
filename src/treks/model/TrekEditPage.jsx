@@ -53,77 +53,95 @@ const TrekEditPage = () => {
     }
   };
 
-  const formatTrekForEdit = (trek, mode) => {
-    if (mode === 'partial') {
-      return {
-        meta: {
-          schema_version: "1.0",
-          mode: "replace_nested"
-        },
-        treks: [
-          {
-            slug: trek.slug,
-            title: trek.title,
-            hero_section: trek.hero_section || {},
-            overview: trek.overview || { sections: [] },
-          }
-        ]
-      };
-    } else {
-      return {
-        meta: {
-          schema_version: "1.0",
-          mode: "replace_nested",
-          generated_by: "admin_panel",
-          generated_at: new Date().toISOString()
-        },
-        regions: [
-          {
-            name: trek.region?.name || "Unknown",
-            slug: trek.region?.slug || "",
-            short_label: "",
-            order: 1,
-            marker_x: 50,
-            marker_y: 50,
-            cover_path: ""
-          }
-        ],
-        treks: [
-          {
-            slug: trek.slug,
-            title: trek.title,
-            region_slug: trek.region?.slug || "",
-            duration: trek.duration || "",
-            trip_grade: trek.trip_grade || trek.difficulty || "",
-            start_point: trek.start_point || trek.startPoint || "",
-            group_size: trek.group_size || trek.groupSize || "",
-            max_altitude: trek.max_altitude || trek.maxAltitude || "",
-            activity: trek.activity || "Trekking",
-            review_text: trek.review_text || trek.reviewText || "",
-            rating: trek.rating || 0,
-            reviews: trek.reviews || 0,
-            hero_section: trek.hero_section || {},
-            overview: trek.overview || { sections: [] },
-            itinerary_days: trek.itinerary_days || [],
-            highlights: trek.highlights || [],
-            action: trek.action || {},
-            cost: trek.cost || {},
-            cost_and_date_section: trek.cost_and_date_section || {},
-            departures: trek.departures || [],
-            group_prices: trek.group_prices || [],
-            date_highlights: trek.date_highlights || [],
-            faq_categories: trek.faq_categories || [],
-            gallery_images: trek.gallery_images || [],
-            elevation_chart: trek.elevation_chart || {},
-            booking_card: trek.booking_card || {},
-            additional_info_sections: trek.additional_info_sections || [],
-            similar_treks: trek.similar_treks || [],
-            reviews_list: trek.reviews_list || []
-          }
-        ]
-      };
-    }
+const formatTrekForEdit = (trek, mode) => {
+  // ✅ Helper to clean gallery images
+  const cleanGalleryImages = (images) => {
+    if (!Array.isArray(images)) return [];
+    
+    return images
+      .filter(img => img && img.image_path && String(img.image_path).trim())
+      .map((img, index) => ({
+        image_path: String(img.image_path).trim(),
+        title: img.title || "",
+        caption: img.caption || "",
+        order: typeof img.order === 'number' ? img.order : index,
+      }));
   };
+
+  if (mode === 'partial') {
+    return {
+      meta: {
+        schema_version: "1.0",
+        mode: "replace_nested"
+      },
+      treks: [
+        {
+          slug: trek.slug,
+          title: trek.title,
+          hero_section: trek.hero_section || {},
+          overview: trek.overview || { sections: [] },
+        }
+      ]
+    };
+  } else {
+    // ✅ Clean gallery images before sending
+    const galleryImages = cleanGalleryImages(trek.gallery_images);
+
+    return {
+      meta: {
+        schema_version: "1.0",
+        mode: "replace_nested",
+        generated_by: "admin_panel",
+        generated_at: new Date().toISOString()
+      },
+      regions: [
+        {
+          name: trek.region?.name || "Unknown",
+          slug: trek.region?.slug || "",
+          short_label: "",
+          order: 1,
+          marker_x: 50,
+          marker_y: 50,
+          cover_path: ""
+        }
+      ],
+      treks: [
+        {
+          slug: trek.slug,
+          title: trek.title,
+          region_slug: trek.region?.slug || "",
+          duration: trek.duration || "",
+          trip_grade: trek.trip_grade || trek.difficulty || "",
+          start_point: trek.start_point || trek.startPoint || "",
+          group_size: trek.group_size || trek.groupSize || "",
+          max_altitude: trek.max_altitude || trek.maxAltitude || "",
+          activity: trek.activity || "Trekking",
+          review_text: trek.review_text || trek.reviewText || "",
+          rating: trek.rating || 0,
+          reviews: trek.reviews || 0,
+          hero_section: trek.hero_section || {},
+          overview: trek.overview || { sections: [] },
+          itinerary_days: trek.itinerary_days || [],
+          highlights: trek.highlights || [],
+          action: trek.action || {},
+          cost: trek.cost || {},
+          cost_and_date_section: trek.cost_and_date_section || {},
+          departures: trek.departures || [],
+          group_prices: trek.group_prices || [],
+          date_highlights: trek.date_highlights || [],
+          faq_categories: trek.faq_categories || [],
+          gallery_images: galleryImages, // ✅ Use cleaned array
+          elevation_chart: trek.elevation_chart || {},
+          booking_card: trek.booking_card || {},
+          additional_info_sections: trek.additional_info_sections || [],
+          similar_treks: trek.similar_treks || [],
+          reviews_list: trek.reviews_list || []
+        }
+      ]
+    };
+  }
+};
+
 
   const handleJsonChange = useCallback((value) => {
     setJsonData(value);
@@ -137,38 +155,57 @@ const TrekEditPage = () => {
     }
   }, []);
 
-  const handleSave = async () => {
-    console.log('💾 Attempting to save trek...');
-    
-    let parsedData;
-    try {
-      parsedData = JSON.parse(jsonData);
-    } catch (err) {
-      showToast(`Invalid JSON: ${err.message}`, TOAST_TYPES.ERROR);
-      return;
-    }
+const handleSave = async () => {
+  console.log('💾 Attempting to save trek...');
+  
+  let parsedData;
+  try {
+    parsedData = JSON.parse(jsonData);
+  } catch (err) {
+    showToast(`Invalid JSON: ${err.message}`, TOAST_TYPES.ERROR);
+    return;
+  }
 
-    if (!parsedData.treks || parsedData.treks.length === 0) {
-      showToast('Treks array is required', TOAST_TYPES.ERROR);
-      return;
-    }
+  if (!parsedData.treks || parsedData.treks.length === 0) {
+    showToast('Treks array is required', TOAST_TYPES.ERROR);
+    return;
+  }
 
-    const method = editMode === 'partial' ? 'PATCH' : 'PUT';
-    console.log(`📤 Sending ${method} request for slug:`, slug);
-    
-    const result = await updateTrek(slug, parsedData, method);
-
-    if (result.success) {
+  // ✅ Validate gallery_images before sending
+  const trek = parsedData.treks[0];
+  if (Array.isArray(trek.gallery_images)) {
+    const invalidImages = trek.gallery_images.filter(img => !img.image_path);
+    if (invalidImages.length > 0) {
       showToast(
-        `Trek updated successfully! (${result.stats?.treks_updated || 0} treks updated)`,
-        TOAST_TYPES.SUCCESS
+        `${invalidImages.length} gallery image(s) missing image_path. Please fix or remove them.`,
+        TOAST_TYPES.ERROR
       );
-      setHasChanges(false);
-      setTimeout(() => loadTrekData(), 500);
-    } else {
-      showToast(`Update failed: ${result.error}`, TOAST_TYPES.ERROR);
+      console.error('Invalid gallery images:', invalidImages);
+      return;
     }
-  };
+  }
+
+  const method = editMode === 'partial' ? 'PATCH' : 'PUT';
+  console.log(`📤 Sending ${method} request for slug:`, slug);
+  console.log('📦 Payload:', JSON.stringify(parsedData, null, 2));
+  
+  const result = await updateTrek(slug, parsedData, method);
+
+  if (result.success) {
+    showToast(
+      `Trek updated successfully! (${result.stats?.treks_updated || 0} treks updated)`,
+      TOAST_TYPES.SUCCESS
+    );
+    setHasChanges(false);
+    setTimeout(() => loadTrekData(), 500);
+  } else {
+    // ✅ Show detailed error information
+    const errorDetails = result.errors?.map(e => e.error || e.message).join('; ') || result.error;
+    showToast(`Update failed: ${errorDetails}`, TOAST_TYPES.ERROR);
+    console.error('❌ Full error response:', result);
+  }
+};
+
 
   const handleBack = () => {
     if (hasChanges) {

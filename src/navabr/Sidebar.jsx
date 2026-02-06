@@ -21,7 +21,7 @@ const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
     // { path: "/cloudinary", icon: Cloud, label: "Cloudinary", key: "cloudinary" },  // ✅ ADD THIS
     { path: "/bookings", icon: Calendar, label: "Bookings", key: "bookings" },
     { path: "/blogs", icon: FileText, label: "Blogs", key: "blogs" },
-    { path: "/users", icon: Users, label: "Users", key: "users" },
+    // { path: "/users", icon: Users, label: "Users", key: "users" },
     { path: "/customize-trip", icon: ListChecks, label: "Customize Trip", key: "customize-trip" },
     {path: "/travel-styles", icon: BarChart3, label: "Travel Styles", key: "travel-styles" },
     {path: "/travel-info", icon: BarChart3, label: "Travel Info", key: "travel-info" },
