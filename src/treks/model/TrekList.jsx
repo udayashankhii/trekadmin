@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Plus, RefreshCw } from "lucide-react";
 import SearchBar from "../shared/SearchBar";
 import TrekTable from "./TrekTable";
+import TrekGalleryManager from "../../gallery/Galley";
 
 const TrekList = ({
   treks,
@@ -11,6 +12,7 @@ const TrekList = ({
   onView,
   onEdit,
   onDelete,
+    onGallery,   
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -89,6 +91,8 @@ const TrekList = ({
         onEdit={onEdit}
         onDelete={onDelete}
         onAddTrek={onAddTrek}
+         onGallery={onGallery}  
+        
       />
     </div>
   );

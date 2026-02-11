@@ -1,3 +1,5 @@
+
+
 // src/pages/TreksPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +7,7 @@ import Toast from "./shared/Toast";
 import ConfirmModal from "./shared/ConfirmModal";
 import TrekList from "./model/TrekList";
 import BulkUpload from "./model/BulkUpload";
+import GalleryUpload from "../gallery/GalleryUpload";
 import TrekDetailModal from "./model/TrekDetailModal";
 import { useTreks } from "../hooks/useTreks";
 import { useUpload } from "../hooks/useUpload";
@@ -28,7 +31,7 @@ const TreksPage = () => {
     trek: null,
   });
 
-  const { treks, loading, loadTreks } = useTreks();
+  const { treks, loading, loadTreks, setTreks } = useTreks();
   const { uploading, uploadProgress, uploadResults, upload, clearResults } = useUpload();
   const { toast, showToast, hideToast } = useToast();
   const { deleteTrek, deleting } = useDeleteTrek();
@@ -156,35 +159,33 @@ const TreksPage = () => {
   };
 
   // Handle edit trek - Navigate to edit page
-const handleEdit = (trek) => {
-  // Relative navigation works better with nested structure
-  navigate(`edit/${trek.slug}`);
-};
-
+  const handleEdit = (trek) => {
+    // Relative navigation works better with nested structure
+    navigate(`edit/${trek.slug}`);
+  };
 
   // Handle delete trek
-const handleDelete = (trek) => {
-  setConfirmModal({
-    show: true,
-    title: "Delete Trek",
-    message: `Are you sure you want to delete "${trek.name}"? This action cannot be undone.`,
-    onConfirm: async () => {
-      setConfirmModal(prev => ({ ...prev, show: false })); // close modal first
-      showToast(`Deleting ${trek.name}...`, TOAST_TYPES.INFO);
+  const handleDelete = (trek) => {
+    setConfirmModal({
+      show: true,
+      title: "Delete Trek",
+      message: `Are you sure you want to delete "${trek.name}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, show: false })); // close modal first
+        showToast(`Deleting ${trek.name}...`, TOAST_TYPES.INFO);
 
-      const result = await deleteTrek(trek.slug);
+        const result = await deleteTrek(trek.slug);
 
-      if (result.success) {
-        // Update treks state immediately for UI
-        setTreks(prev => prev.filter(t => t.slug !== trek.slug));
-        showToast(`Successfully deleted ${trek.name}`, TOAST_TYPES.SUCCESS);
-      } else {
-        showToast(`Failed to delete ${trek.name}: ${result.error}`, TOAST_TYPES.ERROR);
-      }
-    },
-  });
-};
-
+        if (result.success) {
+          // Update treks state immediately for UI
+          setTreks(prev => prev.filter(t => t.slug !== trek.slug));
+          showToast(`Successfully deleted ${trek.name}`, TOAST_TYPES.SUCCESS);
+        } else {
+          showToast(`Failed to delete ${trek.name}: ${result.error}`, TOAST_TYPES.ERROR);
+        }
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -247,6 +248,17 @@ const handleDelete = (trek) => {
             >
               Bulk Upload
             </button>
+
+            <button
+              onClick={() => setActiveTab("gallery")}
+              className={`px-6 py-3 font-medium transition-colors ${
+                activeTab === "gallery"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Gallery Upload
+            </button>
           </div>
         </div>
 
@@ -270,6 +282,15 @@ const handleDelete = (trek) => {
             uploadResults={uploadResults}
             onUpload={handleBulkUpload}
             onClearResults={clearResults}
+            onViewList={handleViewList}
+            showToast={showToast}
+          />
+        )}
+
+        {activeTab === "gallery" && (
+          <GalleryUpload
+            treks={treks}
+            loading={loading}
             onViewList={handleViewList}
             showToast={showToast}
           />

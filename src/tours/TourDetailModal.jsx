@@ -1,6 +1,17 @@
-// src/pages/model/TourDetailModal.jsx
-import React from "react";
-import { X } from "lucide-react";
+// src/tours/TourDetailModal.jsx
+import React, { useState, useEffect } from 'react';
+import {
+  X,
+  Download,
+  Copy,
+  ExternalLink,
+  CheckCircle2,
+  Loader2,
+  AlertCircle
+} from 'lucide-react';
+import JsonView from '@uiw/react-json-view';
+import { darkTheme } from '@uiw/react-json-view/dark';
+import { lightTheme } from '@uiw/react-json-view/light';
 
 const TourDetailModal = ({
   isOpen,
@@ -8,235 +19,214 @@ const TourDetailModal = ({
   tour,
   tourData,
   loading,
-  error,
+  error
 }) => {
+  const [copied, setCopied] = useState(false);
+  const [theme, setTheme] = useState('light');
+
+  // Reset copied state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setCopied(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
+  const handleCopyJSON = () => {
+    if (tourData) {
+      navigator.clipboard.writeText(
+        JSON.stringify(tourData, null, 2)
+      );
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDownloadJSON = () => {
+    if (!tourData) return;
+
+    const blob = new Blob(
+      [JSON.stringify(tourData, null, 2)],
+      { type: 'application/json' }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${tour.slug || 'tour'}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Backdrop */}
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
-        ></div>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {tour.title || 'Tour Details'}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Slug: <span className="font-mono text-blue-600">{tour.slug}</span>
+            </p>
+          </div>
 
-        {/* Modal */}
-        <div className="inline-block align-bottom bg-white rounded-lg shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
-          {/* Header */}
-          <div className="border-b px-6 py-4 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {tour?.title || "Tour Details"}
-            </h3>
+          <div className="flex items-center gap-2">
+            {/* Theme Toggle */}
             <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Toggle theme"
             >
-              <X size={24} />
+              {theme === 'light' ? '🌙' : '☀️'}
             </button>
-          </div>
 
-          {/* Content */}
-          <div className="px-6 py-4 max-h-96 overflow-y-auto">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
+            {/* Copy Button */}
+            <button
+              onClick={handleCopyJSON}
+              disabled={loading || error}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${copied
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title="Copy JSON"
+            >
+              {copied ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span className="text-sm font-medium">Copy</span>
+                </>
+              )}
+            </button>
 
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="text-gray-600 mt-2">Loading tour details...</p>
-              </div>
-            ) : tourData ? (
-              <div className="space-y-6">
-                {/* Basic Info */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    Basic Information
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-600">Location</p>
-                      <p className="font-medium text-gray-900">
-                        {tourData.location || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">Duration</p>
-                      <p className="font-medium text-gray-900">
-                        {tourData.duration || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">Difficulty</p>
-                      <p className="font-medium text-gray-900">
-                        {tourData.difficulty || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">Max Altitude</p>
-                      <p className="font-medium text-gray-900">
-                        {tourData.max_altitude || "-"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            {/* Download Button */}
+            <button
+              onClick={handleDownloadJSON}
+              disabled={loading || error}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download JSON"
+            >
+              <Download className="w-4 h-4" />
+              <span className="text-sm font-medium">Download</span>
+            </button>
 
-                {/* Description */}
-                {tourData.short_description && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Description
-                    </h4>
-                    <p className="text-gray-700 text-sm line-clamp-3">
-                      {tourData.short_description}
-                    </p>
-                  </div>
-                )}
-
-                {/* Highlights */}
-                {tourData.highlights && tourData.highlights.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Highlights
-                    </h4>
-                    <ul className="text-sm text-gray-700 space-y-1">
-                      {tourData.highlights.slice(0, 5).map((h, i) => (
-                        <li key={i}>
-                          • {typeof h === "string" ? h : h.text}
-                        </li>
-                      ))}
-                      {tourData.highlights.length > 5 && (
-                        <li>
-                          • +{tourData.highlights.length - 5} more highlights
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Itinerary */}
-                {tourData.itinerary_days && tourData.itinerary_days.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Itinerary ({tourData.itinerary_days.length} days)
-                    </h4>
-                    <div className="space-y-2">
-                      {tourData.itinerary_days.slice(0, 3).map((day) => (
-                        <div key={day.id} className="bg-gray-50 p-3 rounded text-sm">
-                          <p className="font-medium text-gray-900">
-                            Day {day.day}: {day.title}
-                          </p>
-                          {day.description && (
-                            <p className="text-gray-600 text-xs mt-1 line-clamp-2">
-                              {day.description}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                      {tourData.itinerary_days.length > 3 && (
-                        <p className="text-gray-600 text-sm">
-                          +{tourData.itinerary_days.length - 3} more days
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Pricing */}
-                {tourData.group_prices && tourData.group_prices.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Group Pricing
-                    </h4>
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left text-gray-600 font-medium py-2">
-                            Group Size
-                          </th>
-                          <th className="text-right text-gray-600 font-medium py-2">
-                            Price
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tourData.group_prices.slice(0, 5).map((gp) => (
-                          <tr key={gp.id} className="border-b">
-                            <td className="text-gray-900 py-2">
-                              {gp.label}
-                            </td>
-                            <td className="text-right text-gray-900 font-medium">
-                              ₨{(gp.price || 0).toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* Gallery */}
-                {tourData.gallery_images && tourData.gallery_images.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Gallery ({tourData.gallery_images.length} images)
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      {tourData.gallery_images.slice(0, 3).map((img) => (
-                        <div key={img.id} className="bg-gray-100 rounded overflow-hidden">
-                          <img
-                            src={img.image_url}
-                            alt={img.caption || "Tour image"}
-                            className="w-full h-24 object-cover"
-                            onError={(e) => {
-                              e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23e5e7eb' width='100' height='100'/%3E%3C/svg%3E";
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* SEO */}
-                {tourData.seo && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      SEO Information
-                    </h4>
-                    <div className="text-sm space-y-1">
-                      <div>
-                        <p className="text-gray-600">Meta Title</p>
-                        <p className="text-gray-900 truncate">
-                          {tourData.seo.meta_title || "-"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Meta Description</p>
-                        <p className="text-gray-900 text-xs line-clamp-2">
-                          {tourData.seo.meta_description || "-"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </div>
-
-          {/* Footer */}
-          <div className="bg-gray-50 px-6 py-4 flex justify-end">
+            {/* Close Button */}
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-lg font-medium transition-colors"
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Close"
             >
-              Close
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {loading && (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+                <p className="text-gray-600">Loading tour data...</p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center max-w-md">
+                <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Failed to Load Tour Data
+                </h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!loading && !error && tourData && (
+            <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+              <JsonView
+                value={tourData}
+                style={theme === 'dark' ? darkTheme : lightTheme}
+                displayDataTypes={true}
+                displayObjectSize={true}
+                enableClipboard={true}
+                collapsed={2}
+              />
+            </div>
+          )}
+
+          {!loading && !error && !tourData && (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No data available</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {!loading && !error && tourData && (
+          <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div>
+                <span className="font-medium">Tour ID:</span>{' '}
+                <span className="font-mono">{tourData.id || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Created:</span>{' '}
+                {tourData.created_at
+                  ? new Date(tourData.created_at).toLocaleDateString()
+                  : 'N/A'
+                }
+              </div>
+              <div>
+                <span className="font-medium">Updated:</span>{' '}
+                {tourData.updated_at
+                  ? new Date(tourData.updated_at).toLocaleDateString()
+                  : 'N/A'
+                }
+              </div>
+            </div>
+
+            {tourData.slug && (
+              <a
+                href={`http://127.0.0.1:8000/api/admin/tours/import/full/${tourData.slug}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View in API
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

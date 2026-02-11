@@ -1,100 +1,168 @@
-import React from 'react';
-import { Plus, BarChart3, Settings as SettingsIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
+import Table from '../components/ui/Table';
+import { fetchDashboardStats, fetchBookingStats, fetchTreksList } from '../components/api/adminDashboard';
+
+const ICON_MAP = {
+  treks: '🏔️',
+  bookings: '📅',
+  users: '👥',
+  revenue: '💰',
+};
+
+const BG_MAP = {
+  treks: 'bg-green-50',
+  bookings: 'bg-blue-50',
+  users: 'bg-purple-50',
+  revenue: 'bg-orange-50',
+};
+
+const TREND_COLOR = {
+  up: 'text-green-600',
+  down: 'text-red-600',
+};
 
 const DashboardPage = () => {
-  const stats = [
-    {
-      label: 'Total Treks',
-      value: '3',
-      change: '+12.5%',
-      icon: '🏔️',
-      bgColor: 'bg-green-50'
-    },
-    {
-      label: 'Active Bookings',
-      value: '2',
-      change: '+8.2%',
-      icon: '📅',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      label: 'Total Users',
-      value: '3',
-      change: '+23.1%',
-      icon: '👥',
-      bgColor: 'bg-purple-50'
-    },
-    {
-      label: 'Revenue',
-      value: 'NPR 4.8M',
-      change: '+15.3%',
-      icon: '💰',
-      bgColor: 'bg-orange-50'
-    }
-  ];
+  const [summaryCards, setSummaryCards] = useState([]);
+  const [bookingStats, setBookingStats] = useState(null);
+  const [topTreks, setTopTreks] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const activities = [
-    { type: 'New Booking', desc: 'Rajesh Kumar • Everest Base Camp', time: '2 hours ago' },
-    { type: 'Trek Created', desc: 'Admin • Langtang Valley', time: '5 hours ago' },
-    { type: 'User Signup', desc: 'Priya Singh New member joined', time: '1 day ago' }
-  ];
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        // fetch all data concurrently
+        const [dashboardData, bookingData, treksData] = await Promise.all([
+          fetchDashboardStats(),
+          fetchBookingStats(),
+          fetchTreksList()
+        ]);
 
-  const quickActions = [
-    { icon: <Plus size={40} className="text-purple-500" />, title: 'Add New Trek', desc: 'Create a new trek package' },
-    { icon: <BarChart3 size={40} className="text-green-500" />, title: 'View Reports', desc: 'Analytics and insights' },
-    { icon: <SettingsIcon size={40} className="text-slate-500" />, title: 'Settings', desc: 'Configure your panel' }
-  ];
+        // Dashboard stats
+        setSummaryCards(dashboardData?.summary_cards || []);
+        setRecentActivity(dashboardData?.recent_activity || []);
+        setTopTreks(dashboardData?.top_treks || []);
+
+        // Booking stats
+        setBookingStats(bookingData || null);
+
+      } catch (err) {
+        console.error('Failed to load dashboard data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="text-slate-500 py-20 text-center">
+        Loading dashboard…
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <div className="flex items-start justify-between mb-4">
+        {summaryCards.map((stat) => (
+          <Card key={stat.key} className="p-6">
+            <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-slate-600">{stat.label}</p>
                 <p className="text-3xl font-bold text-slate-900 mt-2">{stat.value}</p>
-                <p className="text-sm text-green-600 mt-1 font-medium">{stat.change}</p>
+                <p className={`text-sm mt-1 font-medium ${TREND_COLOR[stat.trend]}`}>
+                  {stat.change}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">{stat.detail}</p>
               </div>
-              <div className={`${stat.bgColor} w-14 h-14 rounded-xl flex items-center justify-center text-2xl`}>
-                {stat.icon}
+              <div className={`${BG_MAP[stat.key]} w-14 h-14 rounded-xl flex items-center justify-center text-2xl`}>
+                {ICON_MAP[stat.key]}
               </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Booking Stats */}
+      {bookingStats && (
+        <Card title="Booking Stats">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-600">Total Bookings</p>
+              <p className="text-xl font-bold text-slate-900">{bookingStats.total_count}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-600">Paid Bookings</p>
+              <p className="text-xl font-bold text-slate-900">{bookingStats.paid_count}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-600">Pending Bookings</p>
+              <p className="text-xl font-bold text-slate-900">{bookingStats.pending_count}</p>
             </div>
           </div>
-        ))}
-      </div>
-      <Card title="Recent Activity">
-        <div className="space-y-4">
-          {activities.map((activity, idx) => (
-            <div
-              key={idx}
-              className="flex items-start justify-between py-3 border-b border-slate-100 last:border-0"
-            >
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{activity.type}</p>
-                <p className="text-sm text-slate-600 mt-1">{activity.desc}</p>
+          <div className="mt-4 text-sm text-slate-500">
+            Total Revenue: {bookingStats.total_revenue}
+          </div>
+        </Card>
+      )}
+
+      {/* Top Treks */}
+      {topTreks.length > 0 && (
+        <Card title="Top Treks">
+          <Table
+            columns={[
+              { header: 'Trek', key: 'title' },
+              { header: 'Bookings', key: 'bookings' }
+            ]}
+            data={topTreks.map((trek) => ({
+              title: trek.title,
+              bookings: trek.bookings
+            }))}
+          />
+        </Card>
+      )}
+
+      {/* Recent Activity */}
+      {recentActivity.length > 0 && (
+        <Card title="Recent Activity">
+          <div className="space-y-4">
+            {recentActivity.map((activity) => (
+              <div
+                key={activity.id}
+                className="flex items-start justify-between py-3 border-b border-slate-100 last:border-0"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{activity.title}</p>
+                  <p className="text-sm text-slate-600 mt-1">{activity.subtitle}</p>
+                  {activity.status && (
+                    <Badge
+                      variant={
+                        activity.status === 'paid'
+                          ? 'success'
+                          : activity.status === 'pending_payment'
+                          ? 'warning'
+                          : 'default'
+                      }
+                      className="mt-1"
+                    >
+                      {activity.status.replace('_', ' ')}
+                    </Badge>
+                  )}
+                </div>
+                <span className="text-xs text-slate-500 whitespace-nowrap">
+                  {new Date(activity.timestamp).toLocaleString()}
+                </span>
               </div>
-              <span className="text-xs text-slate-500 whitespace-nowrap">{activity.time}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {quickActions.map((action, idx) => (
-          <button
-            key={idx}
-            type="button"
-            className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm hover:shadow-md transition-all text-center group"
-          >
-            <div className="flex justify-center mb-4 group-hover:scale-110 transition-transform">
-              {action.icon}
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">{action.title}</h3>
-            <p className="text-sm text-slate-600">{action.desc}</p>
-          </button>
-        ))}
-      </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

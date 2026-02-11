@@ -1,14 +1,12 @@
 // src/pages/BookingsPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Download, RefreshCw } from "lucide-react";
 import useBookings from "../hooks/book/useBookings";
 import { useToast } from "../hooks/useToast";
 
-// New premium table + modal
 import BookingsDataTable from "./BookingsDataTable";
 import BookingDetailModal from "./BookingDetailModal";
 
-// keep your existing utils
 import { formatCurrency, formatDate } from "../components/utils/formatters";
 
 const BookingsPage = () => {
@@ -21,14 +19,43 @@ const BookingsPage = () => {
   const [bookingDetail, setBookingDetail] = useState(null);
   const [bookingDetailLoading, setBookingDetailLoading] = useState(false);
 
+  // Trek state
+  const [treks, setTreks] = useState([]);
+  const [treksLoading, setTreksLoading] = useState(false);
+
+  // Filter states
   const [globalQuery, setGlobalQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [trekFilter, setTrekFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
+  // Fetch bookings on mount
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
 
+  // Fetch treks on mount with error handling
+  useEffect(() => {
+    const fetchTreks = async () => {
+      setTreksLoading(true);
+      try {
+        const response = await fetch("/api/treks/"); // Adjust your endpoint
+        if (!response.ok) throw new Error("Failed to fetch treks");
+        
+        const data = await response.json();
+        setTreks(data.results || data); // Adjust based on your API response
+      } catch (error) {
+        console.error("Error fetching treks:", error);
+        showToast("Failed to load treks", "error");
+      } finally {
+        setTreksLoading(false);
+      }
+    };
+
+    fetchTreks();
+  }, [showToast]);
+
+  // Load booking detail when modal opens
   useEffect(() => {
     if (detailModalOpen && selectedBooking) loadBookingDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -39,11 +66,14 @@ const BookingsPage = () => {
     try {
       const detail = await fetchBookingByRef(selectedBooking.booking_ref);
       setBookingDetail(detail);
+    } catch (error) {
+      showToast("Failed to load booking details", "error");
     } finally {
       setBookingDetailLoading(false);
     }
   };
 
+  // Memoized filtered bookings for better performance
   const filteredBookings = useMemo(() => {
     if (!bookings?.length) return [];
 
@@ -58,8 +88,20 @@ const BookingsPage = () => {
 
       if (!matchesSearch) return false;
 
+      // Trek filter
+      if (trekFilter !== "all") {
+        const trekMatch = 
+          b.trek_id === parseInt(trekFilter) || 
+          b.trek === trekFilter ||
+          b.trek_slug === trekFilter;
+        
+        if (!trekMatch) return false;
+      }
+
+      // Status filter
       if (statusFilter !== "all" && b.status !== statusFilter) return false;
 
+      // Date range filter
       if (dateRange.from) {
         const d = new Date(b.start_date);
         if (d < new Date(dateRange.from)) return false;
@@ -71,31 +113,52 @@ const BookingsPage = () => {
 
       return true;
     });
-  }, [bookings, globalQuery, statusFilter, dateRange]);
+  }, [bookings, globalQuery, trekFilter, statusFilter, dateRange]);
 
-  const handleViewBooking = (booking) => {
+  const handleViewBooking = useCallback((booking) => {
     setSelectedBooking(booking);
     setBookingDetail(null);
     setDetailModalOpen(true);
-  };
+  }, []);
 
-  const handleDeleteBooking = async (bookingRef) => {
+  const handleDeleteBooking = useCallback(async (bookingRef) => {
     if (!window.confirm("Are you sure you want to delete this booking?")) return;
-    await deleteBooking(bookingRef);
-    await fetchBookings();
-  };
+    
+    try {
+      await deleteBooking(bookingRef);
+      await fetchBookings();
+      showToast("Booking deleted successfully", "success");
+    } catch (error) {
+      showToast("Failed to delete booking", "error");
+    }
+  }, [deleteBooking, fetchBookings, showToast]);
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
+    if (filteredBookings.length === 0) {
+      showToast("No bookings to export", "warning");
+      return;
+    }
+
     const csv = generateCSV(filteredBookings);
-    downloadCSV(csv, "bookings.csv");
-    showToast("✅ Bookings exported", "success");
-  };
+    downloadCSV(csv, `bookings_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(`✅ ${filteredBookings.length} bookings exported`, "success");
+  }, [filteredBookings, showToast]);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setGlobalQuery("");
     setStatusFilter("all");
+    setTrekFilter("all");
     setDateRange({ from: "", to: "" });
-  };
+  }, []);
+
+  // Summary statistics for the header
+  const stats = useMemo(() => {
+    const total = filteredBookings.length;
+    const paid = filteredBookings.filter(b => b.status === "paid").length;
+    const pending = filteredBookings.filter(b => b.status === "pending_payment").length;
+    
+    return { total, paid, pending };
+  }, [filteredBookings]);
 
   return (
     <div className="space-y-6">
@@ -108,13 +171,26 @@ const BookingsPage = () => {
           <p className="text-sm text-gray-600 mt-1">
             Track and manage all trek and tour bookings.
           </p>
+          
+          {/* Quick Stats */}
+          <div className="flex items-center gap-4 mt-3 text-sm">
+            <span className="text-gray-600">
+              <span className="font-semibold text-gray-900">{stats.total}</span> total
+            </span>
+            <span className="text-gray-600">
+              <span className="font-semibold text-green-600">{stats.paid}</span> paid
+            </span>
+            <span className="text-gray-600">
+              <span className="font-semibold text-yellow-600">{stats.pending}</span> pending
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={fetchBookings}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -123,7 +199,7 @@ const BookingsPage = () => {
           <button
             onClick={handleExport}
             disabled={loading || filteredBookings.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-black disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="h-4 w-4" />
             Export
@@ -135,10 +211,14 @@ const BookingsPage = () => {
       <BookingsDataTable
         data={filteredBookings}
         loading={loading}
+        treks={treks}
+        treksLoading={treksLoading}
         globalQuery={globalQuery}
         onGlobalQueryChange={setGlobalQuery}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        trekFilter={trekFilter}
+        onTrekFilterChange={setTrekFilter}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
         onClearFilters={handleClearFilters}
@@ -161,6 +241,7 @@ const BookingsPage = () => {
   );
 };
 
+// CSV Generation utility
 const generateCSV = (bookings) => {
   const headers = [
     "Booking ID",

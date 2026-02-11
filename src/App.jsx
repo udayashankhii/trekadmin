@@ -14,6 +14,7 @@ import BlogPage from "./home/Blogs";
 import AdminLoginForm from "./components/Login/LoginForm";
 import TrekEditPage from "./treks/model/TrekEditPage";
 import ToursPage from "./tours/ToursPage";
+import TourEditPage from "./tours/model/TourEditPage";
 import CloudinaryImport from "./cloudinary/CloudinaryImport.jsx";
 import CustomizeTripRequestsPage from "./customize-trips/CustomizeTripRequestsPage.jsx";
 import TravelInfoAdminPage from "./components/pages/TravelInfoAdminPage.jsx";
@@ -52,19 +53,22 @@ function App() {
               >
                 {/* Default redirect to dashboard */}
                 <Route index element={<Navigate to="/dashboard" replace />} />
-                
+
                 {/* Admin routes */}
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="treks">
                   <Route index element={<TreksPage />} />
                   <Route path="edit/:slug" element={<TrekEditPage />} />
                 </Route>
-                
+
                 <Route path="bookings" element={<BookingsPage />} />
                 <Route path="blogs" element={<BlogPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
-                <Route path="tours" element={<ToursPage />} />
+                <Route path="tours">
+                  <Route index element={<ToursPage />} />
+                  <Route path="edit/:slug" element={<TourEditPage />} />
+                </Route>
                 <Route path="cloudinary" element={<CloudinaryImport />} />
                 {/* ✅ MOVED INSIDE AdminPanel, no leading slash */}
                 <Route path="customize-trip" element={<CustomizeTripRequestsPage />} />

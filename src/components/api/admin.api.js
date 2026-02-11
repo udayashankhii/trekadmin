@@ -147,59 +147,59 @@ adminApi.interceptors.response.use(
     let errors = null;
 
     switch (status) {
-     case 400:
-    message = "Invalid request data";
-    if (data?.import_result?.errors?.length > 0) {
-      errors = data.import_result.errors;
-      message = `Import errors: ${errors.map((e) => e.message || e).join("; ")}`;
-    } else if (data?.errors) {
-      errors = parseValidationErrors(data.errors);
-      message = `Validation failed: ${errors.summary}`;
-    } else if (data?.detail) {
-      message = data.detail;
-    }
-    break;
+      case 400:
+        message = "Invalid request data";
+        if (data?.import_result?.errors?.length > 0) {
+          errors = data.import_result.errors;
+          message = `Import errors: ${errors.map((e) => e.message || e).join("; ")}`;
+        } else if (data?.errors) {
+          errors = parseValidationErrors(data.errors);
+          message = `Validation failed: ${errors.summary}`;
+        } else if (data?.detail) {
+          message = data.detail;
+        }
+        break;
 
-    // ADD THIS RIGHT AFTER THE BREAK:
-    
-    case 403:
-      message = "You do not have permission to perform this action";
-      if (data?.detail) message = data.detail;
-      break;
-      
+      // ADD THIS RIGHT AFTER THE BREAK:
+
+      case 403:
+        message = "You do not have permission to perform this action";
+        if (data?.detail) message = data.detail;
+        break;
+
       case 404:
         message = "Resource not found";
         break;
-        
-        case 413:
-          message = "Payload too large. Try uploading fewer items.";
-          break;
-          
-          case 500:
-            message = "Server error. Please try again.";
-            if (isDev && data?.detail) message += ` - ${data.detail}`;
-            break;
-            
-            case 502:
-              case 503:
-                case 504:
-                  message = "Service temporarily unavailable. Please try again later.";
-                  break;
-                  
-                  default:
-                    if (data?.detail) {
-                      message = data.detail;
-                    } else if (error.message) {
-                      message = error.message;
-                    }
-                  }
-                  
-                  // Handle network errors
-                  if (error.code === "ECONNABORTED") {
-                    message = "Request timeout. Try again or reduce data size.";
-                  } else if (error.code === "ERR_NETWORK") {
-                    message = "Cannot connect to server. Please check your connection.";
-                  }
+
+      case 413:
+        message = "Payload too large. Try uploading fewer items.";
+        break;
+
+      case 500:
+        message = "Server error. Please try again.";
+        if (isDev && data?.detail) message += ` - ${data.detail}`;
+        break;
+
+      case 502:
+      case 503:
+      case 504:
+        message = "Service temporarily unavailable. Please try again later.";
+        break;
+
+      default:
+        if (data?.detail) {
+          message = data.detail;
+        } else if (error.message) {
+          message = error.message;
+        }
+    }
+
+    // Handle network errors
+    if (error.code === "ECONNABORTED") {
+      message = "Request timeout. Try again or reduce data size.";
+    } else if (error.code === "ERR_NETWORK") {
+      message = "Cannot connect to server. Please check your connection.";
+    }
 
     return Promise.reject({
       status,
@@ -322,9 +322,9 @@ export async function adminLogin(emailOrUsername, password) {
   } catch (error) {
     throw {
       message: error.response?.data?.detail ||
-               error.response?.data?.message ||
-               error.message ||
-               "Admin login failed",
+        error.response?.data?.message ||
+        error.message ||
+        "Admin login failed",
       status: error.response?.status,
       data: error.response?.data,
     };
@@ -345,7 +345,7 @@ export async function adminLogout() {
     }
   } catch (error) {
     console.error("Admin logout error:", error);
-    
+
   } finally {
     authService.clearTokens();
   }
@@ -376,7 +376,12 @@ export async function getAdminTreks() {
 }
 
 export async function getAdminTrek(slug) {
-  return adminApi.get(`/import/full/${slug}/`);
+  const data = await adminApi.get(`/import/full/${slug}/`);
+  // If it's wrapped in the import format { treks: [...] }, extract it
+  if (data && data.treks && Array.isArray(data.treks) && data.treks.length > 0) {
+    return data.treks[0];
+  }
+  return data;
 }
 
 export async function searchAdminTreks(query) {
@@ -398,7 +403,12 @@ export const deleteTrekApi = async (slug, token) => {
  * GET /api/admin/tours-list/
  */
 export async function getAdminToursList() {
-  return adminApi.get("/tours-list/");
+  const data = await adminApi.get("/tours-list/");
+  // Handle both flat arrays and paginated responses { results: [], ... }
+  if (data && data.results && Array.isArray(data.results)) {
+    return data.results;
+  }
+  return data;
 }
 
 /**
@@ -406,7 +416,12 @@ export async function getAdminToursList() {
  * GET /api/admin/tours/import/full/<slug>/
  */
 export async function getAdminTour(slug) {
-  return adminApi.get(`/tours/import/full/${slug}/`);
+  const data = await adminApi.get(`/tours/import/full/${slug}/`);
+  // If it's wrapped in the import format { tours: [...] }, extract it
+  if (data && data.tours && Array.isArray(data.tours) && data.tours.length > 0) {
+    return data.tours[0];
+  }
+  return data;
 }
 
 /**
@@ -459,8 +474,8 @@ export async function importFullToursBulk(importData, onProgress) {
   const payload = importData.meta
     ? importData
     : {
-        tours: tours,
-      };
+      tours: tours,
+    };
 
   try {
     if (onProgress) onProgress({ current: 0, total });
@@ -614,15 +629,15 @@ export async function importFullTreksBulk(importData, onProgress) {
   const payload = importData.meta
     ? importData
     : {
-        meta: {
-          schema_version: "1.0",
-          mode: "replace_nested",
-          generated_by: "admin_panel",
-          generated_at: new Date().toISOString(),
-        },
-        regions: importData.regions || [],
-        treks: treks,
-      };
+      meta: {
+        schema_version: "1.0",
+        mode: "replace_nested",
+        generated_by: "admin_panel",
+        generated_at: new Date().toISOString(),
+      },
+      regions: importData.regions || [],
+      treks: treks,
+    };
 
   try {
     if (onProgress) onProgress({ current: 0, total });
@@ -808,7 +823,7 @@ export default adminApi;
 
 export const importCloudinaryImages = async (payload) => {
   const token = localStorage.getItem('token'); // or 'admin_token' - check what you use
-  
+
   const response = await fetch('http://localhost:8000/api/admin/cloudinary/import/', {
     method: 'POST',
     headers: {

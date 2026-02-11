@@ -63,7 +63,11 @@ const ToursPage = () => {
     const successCount = (result.stats?.tours_created || 0) + (result.stats?.tours_updated || 0);
     const failCount = (result.errors || []).length;
 
-    if (result.ok && successCount > 0) {
+    const isActuallySuccess = result.importOk !== undefined
+      ? result.importOk && successCount > 0
+      : result.success;
+
+    if (isActuallySuccess && successCount > 0) {
       showToast(
         `Successfully uploaded ${successCount} tour(s)!`,
         TOAST_TYPES.SUCCESS
@@ -221,22 +225,20 @@ const ToursPage = () => {
           <div className="flex border-b">
             <button
               onClick={() => setActiveTab("list")}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === "list"
-                  ? "border-b-2 border-blue-600 text-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`px-6 py-3 font-medium transition-colors ${activeTab === "list"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               Tour List ({tours.length})
             </button>
 
             <button
               onClick={() => setActiveTab("upload")}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === "upload"
-                  ? "border-b-2 border-blue-600 text-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`px-6 py-3 font-medium transition-colors ${activeTab === "upload"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               Bulk Upload
             </button>

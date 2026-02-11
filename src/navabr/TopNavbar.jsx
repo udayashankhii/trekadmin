@@ -137,31 +137,7 @@ const handleLogout = async () => {
 
 
                     {/* Menu Items */}
-                    <div className="py-2">
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          navigate('/profile');
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
-                      >
-                        <User className="h-4 w-4" />
-                        View Profile
-                      </button>
-
-
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          navigate('/settings');
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
-                      >
-                        <Settings className="h-4 w-4" />
-                        Settings
-                      </button>
-                    </div>
-
+                  
 
                     <hr className="my-2" />
 
