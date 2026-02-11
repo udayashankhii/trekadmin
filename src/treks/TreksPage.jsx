@@ -18,7 +18,7 @@ import { TOAST_TYPES } from "../components/utils/constants";
 
 const TreksPage = () => {
   const navigate = useNavigate();
-  
+
   const [activeTab, setActiveTab] = useState("list");
   const [confirmModal, setConfirmModal] = useState({
     show: false,
@@ -35,12 +35,12 @@ const TreksPage = () => {
   const { uploading, uploadProgress, uploadResults, upload, clearResults } = useUpload();
   const { toast, showToast, hideToast } = useToast();
   const { deleteTrek, deleting } = useDeleteTrek();
-  const { 
-    trekData, 
-    loading: loadingDetail, 
-    error: detailError, 
-    loadTrekDetail, 
-    clearTrekDetail 
+  const {
+    trekData,
+    loading: loadingDetail,
+    error: detailError,
+    loadTrekDetail,
+    clearTrekDetail
   } = useTrekDetail();
 
   // Load treks on mount and when switching to list tab
@@ -62,7 +62,7 @@ const TreksPage = () => {
   const handleBulkUpload = async (importData) => {
     const result = await upload(importData);
 
-    const isActuallySuccess = result.importOk !== undefined 
+    const isActuallySuccess = result.importOk !== undefined
       ? result.importOk && result.successCount > 0
       : result.success;
 
@@ -71,16 +71,16 @@ const TreksPage = () => {
         `Successfully uploaded ${result.successCount} trek(s)!`,
         TOAST_TYPES.SUCCESS
       );
-      
+
       setTimeout(async () => {
         await loadTreks();
       }, 500);
-      
+
     } else if (result.error) {
       showToast(result.error, TOAST_TYPES.ERROR);
     } else {
       const { successCount, failCount } = result;
-      
+
       if (failCount === 0 && successCount > 0) {
         showToast(
           `Successfully uploaded ${successCount} trek(s)!`,
@@ -110,7 +110,7 @@ const TreksPage = () => {
     loadTreks().then((result) => {
       if (result.success) {
         showToast(
-          `Loaded ${result.count} treks successfully`, 
+          `Loaded ${result.count} treks successfully`,
           TOAST_TYPES.SUCCESS
         );
       } else {
@@ -140,7 +140,7 @@ const TreksPage = () => {
     });
 
     const result = await loadTrekDetail(trek.slug);
-    
+
     if (!result.success) {
       showToast(
         `Failed to load trek details: ${result.error}`,
@@ -229,33 +229,30 @@ const TreksPage = () => {
           <div className="flex border-b">
             <button
               onClick={() => setActiveTab("list")}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === "list"
+              className={`px-6 py-3 font-medium transition-colors ${activeTab === "list"
                   ? "border-b-2 border-blue-600 text-blue-600"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
             >
               Trek List ({treks.length})
             </button>
 
             <button
               onClick={() => setActiveTab("upload")}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === "upload"
+              className={`px-6 py-3 font-medium transition-colors ${activeTab === "upload"
                   ? "border-b-2 border-blue-600 text-blue-600"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
             >
               Bulk Upload
             </button>
 
             <button
               onClick={() => setActiveTab("gallery")}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === "gallery"
+              className={`px-6 py-3 font-medium transition-colors ${activeTab === "gallery"
                   ? "border-b-2 border-blue-600 text-blue-600"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
             >
               Gallery Upload
             </button>
@@ -266,7 +263,7 @@ const TreksPage = () => {
         {activeTab === "list" && (
           <TrekList
             treks={treks}
-            loading={loading || deleting} 
+            loading={loading || deleting}
             onRefresh={handleRefresh}
             onAddTrek={handleAddTrek}
             onView={handleView}
@@ -289,7 +286,8 @@ const TreksPage = () => {
 
         {activeTab === "gallery" && (
           <GalleryUpload
-            treks={treks}
+            type="treks"
+            resources={treks}
             loading={loading}
             onViewList={handleViewList}
             showToast={showToast}

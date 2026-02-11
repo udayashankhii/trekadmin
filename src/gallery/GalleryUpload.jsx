@@ -1,51 +1,184 @@
 // src/pages/model/GalleryUpload.jsx
+/**
+ * Self-Contained Gallery Upload Component
+ * 
+ * Fetches treks from API and manages hero/gallery image uploads.
+ * No external props needed - handles everything internally.
+ */
+
 import React, { useState, useEffect, useCallback } from "react";
-import { Upload, Image as ImageIcon, AlertCircle, CheckCircle, X } from "lucide-react";
+import { Upload, Image as ImageIcon, AlertCircle, CheckCircle, X, Info } from "lucide-react";
 import TrekSelector from "./TrekSelector";
 import ImageUploader from "./ImageUploader";
 import ImagePreview from "./ImagePreviewer";
-import { useGalleryUpload } from "../hooks/useGalleryUpload";
-import { TOAST_TYPES } from "../components/utils/constants";
+import  {useGalleryUpload } from "../hooks/useGalleryUpload";
+import { getAdminTreks } from "../components/api/admin.api";
 
-const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
+// Toast types (you can import from your constants file if available)
+const TOAST_TYPES = {
+  SUCCESS: 'success',
+  ERROR: 'error',
+  WARNING: 'warning',
+  INFO: 'info'
+};
+
+const GalleryUpload = ({ onViewList, showToast }) => {
+  // Trek management state
+  const [treks, setTreks] = useState([]);
+  const [loadingTreks, setLoadingTreks] = useState(true);
+  const [trekError, setTrekError] = useState(null);
   const [selectedTrek, setSelectedTrek] = useState(null);
+  
+  // Hero image state
   const [heroImage, setHeroImage] = useState(null);
-  const [galleryImages, setGalleryImages] = useState([]);
   const [heroPreview, setHeroPreview] = useState(null);
+  
+  // Gallery images state
+  const [galleryImages, setGalleryImages] = useState([]);
   const [galleryPreviews, setGalleryPreviews] = useState([]);
+  
+  // Upload state
   const [uploadState, setUploadState] = useState({
     hero: { uploading: false, progress: 0, error: null, success: false },
     gallery: { uploading: false, progress: 0, error: null, success: false },
   });
+  
+  // Debug mode
+  const [debugMode, setDebugMode] = useState(false);
 
-  const { uploadHeroImage, uploadGalleryImages } = useGalleryUpload();
+  const { 
+    uploadHeroImage, 
+    uploadGalleryImages,
+    validateImageFile,
+  } = useGalleryUpload();
 
-  // Generate preview URLs for images
+  // ========================================
+  // FETCH TREKS FROM API
+  // ========================================
+  useEffect(() => {
+    async function fetchTreks() {
+      setLoadingTreks(true);
+      setTrekError(null);
+      
+      try {
+        if (debugMode) {
+          console.log('📡 Fetching treks from API...');
+        }
+        
+        const response = await getAdminTreks();
+        
+        if (debugMode) {
+          console.log('✅ Treks fetched:', response);
+        }
+        
+        // Handle different response formats
+        let treksList = [];
+        
+        if (Array.isArray(response)) {
+          treksList = response;
+        } else if (response.results && Array.isArray(response.results)) {
+          treksList = response.results;
+        } else if (response.treks && Array.isArray(response.treks)) {
+          treksList = response.treks;
+        } else if (response.data && Array.isArray(response.data)) {
+          treksList = response.data;
+        }
+        
+        if (debugMode) {
+          console.log(`📊 Parsed ${treksList.length} treks`);
+        }
+        
+        setTreks(treksList);
+        
+        if (treksList.length === 0) {
+          console.warn('⚠️ No treks found in API response');
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch treks:', error);
+        setTrekError(
+          error.message || 
+          error.data?.detail || 
+          'Failed to load treks from server'
+        );
+        
+        if (showToast) {
+          showToast(
+            `Failed to load treks: ${error.message || 'Unknown error'}`,
+            TOAST_TYPES.ERROR
+          );
+        }
+      } finally {
+        setLoadingTreks(false);
+      }
+    }
+    
+    fetchTreks();
+  }, [debugMode, showToast]);
+
+  // ========================================
+  // PREVIEW MANAGEMENT
+  // ========================================
+  
+  // Generate preview for hero image
   useEffect(() => {
     if (heroImage) {
       const url = URL.createObjectURL(heroImage);
       setHeroPreview(url);
-      return () => URL.revokeObjectURL(url);
+      
+      if (debugMode) {
+        console.log('🖼️ Hero preview created:', {
+          url,
+          fileName: heroImage.name,
+          fileType: heroImage.type,
+          fileSize: heroImage.size,
+        });
+      }
+      
+      return () => {
+        if (debugMode) console.log('🗑️ Revoking hero preview URL:', url);
+        URL.revokeObjectURL(url);
+      };
     } else {
       setHeroPreview(null);
     }
-  }, [heroImage]);
+  }, [heroImage, debugMode]);
 
+  // Generate previews for gallery images
   useEffect(() => {
     if (galleryImages.length > 0) {
-      const urls = galleryImages.map(file => URL.createObjectURL(file));
+      const urls = galleryImages.map(file => {
+        const url = URL.createObjectURL(file);
+        if (debugMode) {
+          console.log('🖼️ Gallery preview created:', {
+            url,
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+          });
+        }
+        return url;
+      });
+      
       setGalleryPreviews(urls);
-      return () => urls.forEach(url => URL.revokeObjectURL(url));
+      
+      return () => {
+        if (debugMode) console.log('🗑️ Revoking gallery preview URLs');
+        urls.forEach(url => URL.revokeObjectURL(url));
+      };
     } else {
       setGalleryPreviews([]);
     }
-  }, [galleryImages]);
+  }, [galleryImages, debugMode]);
 
   // Reset form when trek changes
   useEffect(() => {
     resetForm();
   }, [selectedTrek]);
 
+  // ========================================
+  // FORM MANAGEMENT
+  // ========================================
+  
   const resetForm = () => {
     setHeroImage(null);
     setGalleryImages([]);
@@ -57,21 +190,21 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
     });
   };
 
+  // ========================================
+  // FILE SELECTION HANDLERS
+  // ========================================
+  
   // Handle hero image selection
   const handleHeroSelect = useCallback((files) => {
     if (!files || files.length === 0) return;
     
     const file = files[0];
+    const validation = validateImageFile(file);
     
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      showToast("Please select a valid image file", TOAST_TYPES.ERROR);
-      return;
-    }
-
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Hero image must be less than 5MB", TOAST_TYPES.ERROR);
+    if (!validation.valid) {
+      if (showToast) {
+        showToast(validation.error, TOAST_TYPES.ERROR);
+      }
       return;
     }
 
@@ -80,7 +213,7 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
       ...prev,
       hero: { uploading: false, progress: 0, error: null, success: false }
     }));
-  }, [showToast]);
+  }, [showToast, validateImageFile]);
 
   // Handle gallery images selection
   const handleGallerySelect = useCallback((files) => {
@@ -90,15 +223,10 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
     const errors = [];
 
     Array.from(files).forEach((file, index) => {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        errors.push(`File ${index + 1}: Not a valid image`);
-        return;
-      }
-
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        errors.push(`File ${index + 1}: Exceeds 5MB`);
+      const validation = validateImageFile(file);
+      
+      if (!validation.valid) {
+        errors.push(`File ${index + 1} (${file.name}): ${validation.error}`);
         return;
       }
 
@@ -107,11 +235,13 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
 
     // Check max limit
     if (validFiles.length > 10) {
-      showToast("Maximum 10 gallery images allowed", TOAST_TYPES.WARNING);
+      if (showToast) {
+        showToast("Maximum 10 gallery images allowed", TOAST_TYPES.WARNING);
+      }
       validFiles.splice(10);
     }
 
-    if (errors.length > 0) {
+    if (errors.length > 0 && showToast) {
       showToast(`Some files were skipped: ${errors.join(', ')}`, TOAST_TYPES.WARNING);
     }
 
@@ -122,28 +252,38 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
         gallery: { uploading: false, progress: 0, error: null, success: false }
       }));
     }
-  }, [showToast]);
+  }, [showToast, validateImageFile]);
 
-  // Remove hero image
+  // ========================================
+  // REMOVE HANDLERS
+  // ========================================
+  
   const handleRemoveHero = () => {
     setHeroImage(null);
     setHeroPreview(null);
   };
 
-  // Remove gallery image
   const handleRemoveGalleryImage = (index) => {
     setGalleryImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  // ========================================
+  // UPLOAD HANDLERS
+  // ========================================
+  
   // Upload hero image
   const handleUploadHero = async () => {
     if (!selectedTrek) {
-      showToast("Please select a trek first", TOAST_TYPES.ERROR);
+      if (showToast) {
+        showToast("Please select a trek first", TOAST_TYPES.ERROR);
+      }
       return;
     }
 
     if (!heroImage) {
-      showToast("Please select a hero image", TOAST_TYPES.ERROR);
+      if (showToast) {
+        showToast("Please select a hero image", TOAST_TYPES.ERROR);
+      }
       return;
     }
 
@@ -160,7 +300,8 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
           ...prev,
           hero: { ...prev.hero, progress }
         }));
-      }
+      },
+      'treks' // type
     );
 
     if (result.success) {
@@ -168,7 +309,10 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
         ...prev,
         hero: { uploading: false, progress: 100, error: null, success: true }
       }));
-      showToast("Hero image uploaded successfully!", TOAST_TYPES.SUCCESS);
+      
+      if (showToast) {
+        showToast("Hero image uploaded successfully!", TOAST_TYPES.SUCCESS);
+      }
       
       // Reset hero after 2 seconds
       setTimeout(() => {
@@ -184,19 +328,26 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
         ...prev,
         hero: { uploading: false, progress: 0, error: result.error, success: false }
       }));
-      showToast(`Failed to upload hero image: ${result.error}`, TOAST_TYPES.ERROR);
+      
+      if (showToast) {
+        showToast(`Failed to upload hero image: ${result.error}`, TOAST_TYPES.ERROR);
+      }
     }
   };
 
   // Upload gallery images
   const handleUploadGallery = async () => {
     if (!selectedTrek) {
-      showToast("Please select a trek first", TOAST_TYPES.ERROR);
+      if (showToast) {
+        showToast("Please select a trek first", TOAST_TYPES.ERROR);
+      }
       return;
     }
 
     if (galleryImages.length === 0) {
-      showToast("Please select gallery images", TOAST_TYPES.ERROR);
+      if (showToast) {
+        showToast("Please select gallery images", TOAST_TYPES.ERROR);
+      }
       return;
     }
 
@@ -213,7 +364,8 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
           ...prev,
           gallery: { ...prev.gallery, progress }
         }));
-      }
+      },
+      'treks' // type
     );
 
     if (result.success) {
@@ -221,10 +373,13 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
         ...prev,
         gallery: { uploading: false, progress: 100, error: null, success: true }
       }));
-      showToast(
-        `Successfully uploaded ${result.count} gallery image(s)!`,
-        TOAST_TYPES.SUCCESS
-      );
+      
+      if (showToast) {
+        showToast(
+          `Successfully uploaded ${result.count} gallery image(s)!`,
+          TOAST_TYPES.SUCCESS
+        );
+      }
       
       // Reset gallery after 2 seconds
       setTimeout(() => {
@@ -240,10 +395,17 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
         ...prev,
         gallery: { uploading: false, progress: 0, error: result.error, success: false }
       }));
-      showToast(`Failed to upload gallery images: ${result.error}`, TOAST_TYPES.ERROR);
+      
+      if (showToast) {
+        showToast(`Failed to upload gallery images: ${result.error}`, TOAST_TYPES.ERROR);
+      }
     }
   };
 
+  // ========================================
+  // RENDER
+  // ========================================
+  
   return (
     <div className="bg-white rounded-lg shadow-sm">
       {/* Header */}
@@ -257,13 +419,45 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
               Upload hero image and gallery images for your treks
             </p>
           </div>
-          <button
-            onClick={onViewList}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Back to List
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Debug Toggle */}
+            <button
+              onClick={() => setDebugMode(!debugMode)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                debugMode 
+                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' 
+                  : 'bg-gray-100 text-gray-600 border border-gray-300'
+              }`}
+              title="Toggle debug mode (check browser console)"
+            >
+              <Info className="w-3 h-3 inline mr-1" />
+              Debug {debugMode ? 'ON' : 'OFF'}
+            </button>
+            
+            {onViewList && (
+              <button
+                onClick={onViewList}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Back to List
+              </button>
+            )}
+          </div>
         </div>
+        
+        {debugMode && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-xs text-yellow-800 font-medium flex items-center gap-2">
+              <Info className="w-4 h-4" />
+              Debug mode enabled - Check browser console (F12) for detailed logs
+            </p>
+            <div className="mt-2 text-xs text-yellow-700 font-mono">
+              <div>Treks loaded: {treks.length}</div>
+              <div>Loading: {loadingTreks ? 'Yes' : 'No'}</div>
+              <div>Error: {trekError || 'None'}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-6 space-y-6">
@@ -272,7 +466,8 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
           treks={treks}
           selectedTrek={selectedTrek}
           onSelectTrek={setSelectedTrek}
-          loading={loading}
+          loading={loadingTreks}
+          error={trekError}
         />
 
         {/* Upload Sections - Only show if trek is selected */}
@@ -299,14 +494,25 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
                 disabled={uploadState.hero.uploading}
               />
 
-              {heroPreview && (
+              {heroPreview && heroImage && (
                 <div className="mt-4">
                   <ImagePreview
                     image={heroImage}
                     preview={heroPreview}
                     onRemove={handleRemoveHero}
                     disabled={uploadState.hero.uploading}
+                    objectFit="contain"
                   />
+                  
+                  {/* Debug info */}
+                  {debugMode && (
+                    <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600 font-mono">
+                      <div>File: {heroImage.name}</div>
+                      <div>Type: {heroImage.type}</div>
+                      <div>Size: {(heroImage.size / 1024).toFixed(2)} KB</div>
+                      <div>Preview: {heroPreview.substring(0, 50)}...</div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -402,6 +608,7 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
                         onRemove={() => handleRemoveGalleryImage(index)}
                         disabled={uploadState.gallery.uploading}
                         showSize={true}
+                        objectFit="cover"
                       />
                     ))}
                   </div>
@@ -472,7 +679,7 @@ const GalleryUpload = ({ treks, loading, onViewList, showToast }) => {
           </>
         )}
 
-        {!selectedTrek && (
+        {!selectedTrek && !loadingTreks && !trekError && (
           <div className="text-center py-12 text-gray-500">
             <ImageIcon className="w-12 h-12 mx-auto mb-3 text-gray-400" />
             <p className="text-lg font-medium">Select a Trek to Begin</p>

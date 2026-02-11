@@ -1,58 +1,154 @@
-// src/pages/model/ImagePreview.jsx
-import React from "react";
-import { X, File } from "lucide-react";
+// src/pages/model/ImageUploader.jsx
+import React, { useRef, useState } from "react";
+import { Upload, Image as ImageIcon } from "lucide-react";
 
-const ImagePreview = ({ image, preview, onRemove, disabled = false, showSize = false }) => {
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+const ImageUploader = ({ 
+  type, 
+  onFileSelect, 
+  multiple = false, 
+  disabled = false,
+  maxFiles = 1 
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (disabled) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length > 0) {
+      const filesToProcess = multiple 
+        ? imageFiles.slice(0, maxFiles)
+        : [imageFiles[0]];
+      onFileSelect(filesToProcess);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      onFileSelect(Array.from(files));
+    }
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleClick = () => {
+    if (!disabled) {
+      fileInputRef.current?.click();
+    }
   };
 
   return (
-    <div className="relative group">
-      {/* Image Container */}
-      <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
-        <img
-          src={preview}
-          alt={image.name}
-          className="w-full h-full object-cover"
-        />
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={handleClick}
+      className={`
+        relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+        transition-all duration-200
+        ${disabled 
+          ? 'bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
+          : isDragging
+            ? 'border-blue-500 bg-blue-50 scale-[1.02]'
+            : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+        }
+      `}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple={multiple}
+        onChange={handleFileChange}
+        disabled={disabled}
+        className="hidden"
+      />
 
-        {/* Overlay on Hover */}
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200">
-          {/* Remove Button */}
-          {!disabled && (
-            <button
-              onClick={onRemove}
-              className="absolute top-2 right-2 w-8 h-8 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg"
-              title="Remove image"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      <div className="flex flex-col items-center gap-3">
+        {/* Icon */}
+        <div className={`
+          w-12 h-12 rounded-full flex items-center justify-center
+          ${isDragging 
+            ? 'bg-blue-100' 
+            : type === 'hero' 
+              ? 'bg-blue-50' 
+              : 'bg-green-50'
+          }
+        `}>
+          {isDragging ? (
+            <Upload className="w-6 h-6 text-blue-600" />
+          ) : (
+            <ImageIcon className={`w-6 h-6 ${
+              type === 'hero' ? 'text-blue-600' : 'text-green-600'
+            }`} />
           )}
+        </div>
 
-          {/* Image Info Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <p className="text-white text-xs font-medium truncate">
-              {image.name}
+        {/* Text */}
+        <div>
+          <p className="text-sm font-medium text-gray-900">
+            {isDragging ? (
+              "Drop images here"
+            ) : (
+              <>
+                <span className={`${
+                  type === 'hero' ? 'text-blue-600' : 'text-green-600'
+                } font-semibold`}>
+                  Click to upload
+                </span>
+                {" or drag and drop"}
+              </>
+            )}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {multiple 
+              ? `PNG, JPG, WEBP up to 5MB each (max ${maxFiles} images)`
+              : "PNG, JPG, WEBP up to 5MB"
+            }
+          </p>
+        </div>
+
+        {/* Additional Info */}
+        {type === 'hero' && (
+          <div className="mt-2 px-3 py-1.5 bg-blue-50 rounded-full">
+            <p className="text-xs text-blue-700 font-medium">
+              Recommended: 1920 x 1080px
             </p>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* File Info */}
-      {showSize && (
-        <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
-          <File className="w-3 h-3" />
-          <span className="truncate flex-1">{image.name}</span>
-          <span className="text-gray-500">{formatFileSize(image.size)}</span>
-        </div>
-      )}
+        {type === 'gallery' && (
+          <div className="mt-2 px-3 py-1.5 bg-green-50 rounded-full">
+            <p className="text-xs text-green-700 font-medium">
+              Recommended: 1200 x 800px
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default ImagePreview;
+export default ImageUploader;

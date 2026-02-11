@@ -1,15 +1,16 @@
-// src/pages/model/TrekSelector.jsx
+// src/gallery/ResourceSelector.jsx
 /**
- * TrekSelector Component
+ * ResourceSelector Component
  * 
- * A production-grade dropdown selector for treks with search functionality.
+ * A universal production-grade dropdown selector for treks/tours with search functionality.
  * Features:
- * - Search/filter by name, slug, or region
+ * - Support for both treks and tours
+ * - Search/filter by name, slug, region/location
  * - Keyboard navigation support
- * - Loading states
- * - Error boundaries
+ * - Loading and error states
  * - Accessibility (ARIA labels, keyboard support)
  * - Null-safe operations
+ * - Production-ready error handling
  * - Handles nested object properties safely
  */
 
@@ -28,13 +29,14 @@ const getStringValue = (value) => {
   return String(value);
 };
 
-const TrekSelector = ({ 
-  treks = [], 
-  selectedTrek = null, 
-  onSelectTrek, 
+const ResourceSelector = ({ 
+  type = 'treks',
+  items = [], 
+  selectedItem = null, 
+  onSelectItem, 
   loading = false,
   error = null,
-  placeholder = "Select a trek...",
+  placeholder,
   disabled = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,67 +47,79 @@ const TrekSelector = ({
   const searchInputRef = useRef(null);
   const buttonRef = useRef(null);
 
-  // Validate and sanitize treks array
-  const safeTreks = useMemo(() => {
-    if (!Array.isArray(treks)) {
-      console.warn("TrekSelector: 'treks' prop should be an array, received:", typeof treks);
+  // Determine resource name
+  const resourceName = useMemo(() => {
+    return type === 'tours' ? 'Tour' : 'Trek';
+  }, [type]);
+
+  // Default placeholder
+  const defaultPlaceholder = useMemo(() => {
+    return placeholder || `Select a ${resourceName.toLowerCase()}...`;
+  }, [placeholder, resourceName]);
+
+  // Validate and sanitize items array
+  const safeItems = useMemo(() => {
+    if (!Array.isArray(items)) {
+      console.warn(`ResourceSelector: 'items' prop should be an array, received:`, typeof items);
       return [];
     }
     
     // Filter out invalid entries and normalize string values
-    return treks.filter(trek => {
-      if (!trek || typeof trek !== 'object') return false;
-      if (!trek.slug && !getStringValue(trek.slug)) {
-        console.warn("TrekSelector: Trek missing required 'slug' field:", trek);
+    return items.filter(item => {
+      if (!item || typeof item !== 'object') return false;
+      if (!item.slug && !getStringValue(item.slug)) {
+        console.warn(`ResourceSelector: ${resourceName} missing required 'slug' field:`, item);
         return false;
       }
       return true;
-    }).map(trek => ({
-      ...trek,
+    }).map(item => ({
+      ...item,
       // Ensure all displayed values are strings
-      name: getStringValue(trek.name),
-      title: getStringValue(trek.title),
-      slug: getStringValue(trek.slug),
-      region: getStringValue(trek.region),
-      difficulty: getStringValue(trek.difficulty),
+      name: getStringValue(item.name),
+      title: getStringValue(item.title),
+      slug: getStringValue(item.slug),
+      region: getStringValue(item.region),
+      location: getStringValue(item.location),
+      difficulty: getStringValue(item.difficulty),
+      travel_style: getStringValue(item.travel_style),
     }));
-  }, [treks]);
+  }, [items, resourceName]);
 
-  // Filter treks based on search term
-  const filteredTreks = useMemo(() => {
+  // Filter items based on search term
+  const filteredItems = useMemo(() => {
     if (!searchTerm || searchTerm.trim() === "") {
-      return safeTreks;
+      return safeItems;
     }
 
     const term = searchTerm.toLowerCase().trim();
     
-    return safeTreks.filter(trek => {
+    return safeItems.filter(item => {
       try {
-        const name = (trek.name || "").toLowerCase();
-        const slug = (trek.slug || "").toLowerCase();
-        const region = (trek.region || "").toLowerCase();
+        const name = (item.name || "").toLowerCase();
+        const slug = (item.slug || "").toLowerCase();
+        const info = (item.region || item.location || "").toLowerCase();
         
         return name.includes(term) || 
                slug.includes(term) || 
-               region.includes(term);
+               info.includes(term);
       } catch (err) {
-        console.error("TrekSelector: Error filtering trek:", trek, err);
+        console.error(`ResourceSelector: Error filtering ${resourceName}:`, item, err);
         return false;
       }
     });
-  }, [safeTreks, searchTerm]);
+  }, [safeItems, searchTerm, resourceName]);
 
-  // Handle trek selection
-  const handleSelect = (trek) => {
-    if (!trek || !onSelectTrek) return;
+  // Handle item selection
+  const handleSelect = (item) => {
+    if (!item || !onSelectItem) return;
     
     try {
-      onSelectTrek(trek);
+      onSelectItem(item);
       setIsOpen(false);
       setSearchTerm("");
       setFocusedIndex(-1);
     } catch (err) {
-      console.error("TrekSelector: Error in onSelectTrek callback:", err);
+      console.error(`ResourceSelector: Error in onSelectItem callback:`, err);
     }
   };
 
@@ -130,7 +144,7 @@ const TrekSelector = ({
       case "ArrowDown":
         e.preventDefault();
         setFocusedIndex(prev => 
-          prev < filteredTreks.length - 1 ? prev + 1 : prev
+          prev < filteredItems.length - 1 ? prev + 1 : prev
         );
         break;
       
@@ -141,8 +155,8 @@ const TrekSelector = ({
       
       case "Enter":
         e.preventDefault();
-        if (focusedIndex >= 0 && focusedIndex < filteredTreks.length) {
-          handleSelect(filteredTreks[focusedIndex]);
+        if (focusedIndex >= 0 && focusedIndex < filteredItems.length) {
+          handleSelect(filteredItems[focusedIndex]);
         }
         break;
       
@@ -188,10 +202,10 @@ const TrekSelector = ({
     return (
       <div className="animate-pulse" role="status" aria-live="polite">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Trek
+          Select {resourceName}
         </label>
-        <div className="h-12 bg-gray-200 rounded-lg" aria-label="Loading treks" />
-        <span className="sr-only">Loading treks...</span>
+        <div className="h-12 bg-gray-200 rounded-lg" aria-label={`Loading ${resourceName.toLowerCase()}s`} />
+        <span className="sr-only">Loading {resourceName.toLowerCase()}s...</span>
       </div>
     );
   }
@@ -201,14 +215,14 @@ const TrekSelector = ({
     return (
       <div role="alert" aria-live="assertive">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Trek
+          Select {resourceName}
         </label>
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-red-900">
-                Failed to load treks
+                Failed to load {resourceName.toLowerCase()}s
               </p>
               <p className="text-sm text-red-700 mt-1">
                 {typeof error === 'string' ? error : 'An unexpected error occurred'}
@@ -221,21 +235,21 @@ const TrekSelector = ({
   }
 
   // Empty state
-  if (safeTreks.length === 0) {
+  if (safeItems.length === 0) {
     return (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Trek
+          Select {resourceName}
         </label>
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-yellow-900">
-                No treks available
+                No {resourceName.toLowerCase()}s available
               </p>
               <p className="text-sm text-yellow-700 mt-1">
-                Please add treks before uploading images.
+                Please add {resourceName.toLowerCase()}s before uploading images.
               </p>
             </div>
           </div>
@@ -244,35 +258,42 @@ const TrekSelector = ({
     );
   }
 
-  // Get display values for selected trek (safely)
-  const selectedTrekName = selectedTrek ? (
-    getStringValue(selectedTrek.name) || 
-    getStringValue(selectedTrek.title) || 
-    getStringValue(selectedTrek.slug)
+  // Get display values for selected item (safely)
+  const selectedItemName = selectedItem ? (
+    getStringValue(selectedItem.name) || 
+    getStringValue(selectedItem.title) || 
+    getStringValue(selectedItem.slug)
   ) : '';
 
-  const selectedTrekSlug = selectedTrek ? getStringValue(selectedTrek.slug) : '';
-  const selectedTrekRegion = selectedTrek ? getStringValue(selectedTrek.region) : '';
+  const selectedItemSlug = selectedItem ? getStringValue(selectedItem.slug) : '';
+  const selectedItemInfo = selectedItem ? (
+    getStringValue(selectedItem.region) || 
+    getStringValue(selectedItem.location)
+  ) : '';
 
   return (
     <div className="relative" onKeyDown={handleKeyDown}>
       <label 
-        htmlFor="trek-selector" 
+        htmlFor={`${type}-selector`} 
         className="block text-sm font-medium text-gray-700 mb-2"
       >
-        Select Trek <span className="text-red-500" aria-label="required">*</span>
+        Select {resourceName} <span className="text-red-500" aria-label="required">*</span>
       </label>
 
-      {/* Selected Trek Display Button */}
+      {/* Selected Item Display Button */}
       <button
         ref={buttonRef}
-        id="trek-selector"
+        id={`${type}-selector`}
         type="button"
         onClick={toggleDropdown}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-label={selectedTrek ? `Selected trek: ${selectedTrekName}` : "Select a trek"}
+        aria-label={
+          selectedItem 
+            ? `Selected ${resourceName.toLowerCase()}: ${selectedItemName}` 
+            : `Select a ${resourceName.toLowerCase()}`
+        }
         className={`
           w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg
           transition-all duration-200
@@ -284,20 +305,20 @@ const TrekSelector = ({
       >
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
-            {selectedTrek ? (
+            {selectedItem ? (
               <div>
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  {selectedTrekName}
+                  {selectedItemName}
                 </p>
-                {(selectedTrekSlug || selectedTrekRegion) && (
+                {(selectedItemSlug || selectedItemInfo) && (
                   <p className="text-xs text-gray-500 truncate">
-                    {selectedTrekSlug}
-                    {selectedTrekRegion && ` • ${selectedTrekRegion}`}
+                    {selectedItemSlug}
+                    {selectedItemInfo && ` • ${selectedItemInfo}`}
                   </p>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">{placeholder}</p>
+              <p className="text-sm text-gray-500">{defaultPlaceholder}</p>
             )}
           </div>
           <ChevronDown
@@ -324,7 +345,7 @@ const TrekSelector = ({
           <div
             ref={dropdownRef}
             role="listbox"
-            aria-label="Trek options"
+            aria-label={`${resourceName} options`}
             className="absolute z-20 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
             style={{ maxHeight: "24rem" }}
           >
@@ -343,37 +364,37 @@ const TrekSelector = ({
                     setSearchTerm(e.target.value);
                     setFocusedIndex(-1);
                   }}
-                  placeholder="Search treks..."
-                  aria-label="Search treks"
+                  placeholder={`Search ${resourceName.toLowerCase()}s...`}
+                  aria-label={`Search ${resourceName.toLowerCase()}s`}
                   className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
 
-            {/* Trek List */}
+            {/* Item List */}
             <div 
               className="overflow-y-auto" 
               style={{ maxHeight: "20rem" }}
             >
-              {filteredTreks.length > 0 ? (
+              {filteredItems.length > 0 ? (
                 <div className="py-1">
-                  {filteredTreks.map((trek, index) => {
-                    const isSelected = selectedTrekSlug === trek.slug;
+                  {filteredItems.map((item, index) => {
+                    const isSelected = selectedItemSlug === item.slug;
                     const isFocused = index === focusedIndex;
 
                     // Safely get display values
-                    const displayName = trek.name || trek.title || trek.slug;
-                    const displaySlug = trek.slug;
-                    const displayRegion = trek.region;
-                    const displayDifficulty = trek.difficulty;
+                    const displayName = item.name || item.title || item.slug;
+                    const displaySlug = item.slug;
+                    const displayInfo = item.region || item.location;
+                    const displayExtra = item.difficulty || item.travel_style;
 
                     return (
                       <button
-                        key={trek.id || trek.slug || index}
+                        key={item.id || item.slug || index}
                         type="button"
                         role="option"
                         aria-selected={isSelected}
-                        onClick={() => handleSelect(trek)}
+                        onClick={() => handleSelect(item)}
                         onMouseEnter={() => setFocusedIndex(index)}
                         className={`
                           w-full px-4 py-3 text-left transition-colors
@@ -396,15 +417,15 @@ const TrekSelector = ({
                                   {displaySlug}
                                 </span>
                               )}
-                              {displayRegion && (
+                              {displayInfo && (
                                 <span className="text-xs text-gray-500">
-                                  • {displayRegion}
+                                  • {displayInfo}
                                 </span>
                               )}
                             </div>
-                            {displayDifficulty && (
+                            {displayExtra && (
                               <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                                {displayDifficulty}
+                                {displayExtra}
                               </span>
                             )}
                           </div>
@@ -435,11 +456,11 @@ const TrekSelector = ({
               ) : (
                 <div className="px-4 py-8 text-center text-gray-500">
                   <AlertCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm font-medium">No treks found</p>
+                  <p className="text-sm font-medium">No {resourceName.toLowerCase()}s found</p>
                   <p className="text-xs mt-1">
                     {searchTerm 
                       ? "Try a different search term" 
-                      : "No treks available"
+                      : `No ${resourceName.toLowerCase()}s available`
                     }
                   </p>
                 </div>
@@ -447,10 +468,10 @@ const TrekSelector = ({
             </div>
 
             {/* Footer with count */}
-            {filteredTreks.length > 0 && (
+            {filteredItems.length > 0 && (
               <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
                 <p className="text-xs text-gray-500">
-                  Showing {filteredTreks.length} of {safeTreks.length} trek(s)
+                  Showing {filteredItems.length} of {safeItems.length} {resourceName.toLowerCase()}(s)
                 </p>
               </div>
             )}
@@ -462,30 +483,35 @@ const TrekSelector = ({
 };
 
 // PropTypes for runtime validation
-TrekSelector.propTypes = {
-  treks: PropTypes.arrayOf(
+ResourceSelector.propTypes = {
+  type: PropTypes.oneOf(['treks', 'tours']),
+  items: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       slug: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
       name: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
       title: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
       region: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+      location: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
       difficulty: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+      travel_style: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     })
   ),
-  selectedTrek: PropTypes.shape({
+  selectedItem: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     slug: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     name: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     title: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     region: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+    location: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     difficulty: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+    travel_style: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
   }),
-  onSelectTrek: PropTypes.func.isRequired,
+  onSelectItem: PropTypes.func.isRequired,
   loading: PropTypes.bool,
   error: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
   placeholder: PropTypes.string,
   disabled: PropTypes.bool,
 };
 
-export default TrekSelector;
+export default ResourceSelector;

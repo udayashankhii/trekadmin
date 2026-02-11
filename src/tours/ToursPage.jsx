@@ -6,6 +6,7 @@ import ConfirmModal from "../treks/shared/ConfirmModal";
 import TourList from "./TourList";
 import TourBulkUpload from "./TourBulkUpload";
 import TourDetailModal from "./TourDetailModal";
+import GalleryUpload from "../gallery/GalleryUpload";
 import { useTours } from "../hooks/tours/useTours";
 import { useTourUpload } from "../hooks/tours/useTourUpload";
 import { useToast } from "../hooks/useToast";
@@ -242,6 +243,16 @@ const ToursPage = () => {
             >
               Bulk Upload
             </button>
+
+            <button
+              onClick={() => setActiveTab("gallery")}
+              className={`px-6 py-3 font-medium transition-colors ${activeTab === "gallery"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
+            >
+              Gallery Upload
+            </button>
           </div>
         </div>
 
@@ -265,6 +276,16 @@ const ToursPage = () => {
             uploadResults={uploadResults}
             onUpload={handleBulkUpload}
             onClearResults={clearResults}
+            onViewList={handleViewList}
+            showToast={showToast}
+          />
+        )}
+
+        {activeTab === "gallery" && (
+          <GalleryUpload
+            type="tours"
+            resources={tours}
+            loading={loading}
             onViewList={handleViewList}
             showToast={showToast}
           />
