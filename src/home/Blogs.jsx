@@ -16,7 +16,10 @@ import {
   RefreshCw,
   ExternalLink,
   Copy,
+  Layers,
+  ImageIcon,
 } from "lucide-react";
+import BlogImageUpload from "../gallery/BlogImageUpload";
 import Dropdown from "../components/ui/Dropdown";
 import Badge from "../components/ui/Badge";
 import {
@@ -30,10 +33,10 @@ import UploadCard from "../treks/model/UploadCard";
 import BlogUploadResults from "../components/blog/BlogUploadResults";
 import BlogUploadInstructions from "../components/blog/BlogUploadInstructions";
 
-import { 
-  validateBlogFile, 
-  readBlogFileAsText, 
-  parseBlogJSON 
+import {
+  validateBlogFile,
+  readBlogFileAsText,
+  parseBlogJSON
 } from "../components/utils/blogFileValidation";
 import { downloadBlogTemplate } from "../components/utils/blogTempleteGenerator";
 const statusLabel = (value) => {
@@ -135,6 +138,7 @@ const emptyForm = {
 };
 
 const BlogPage = () => {
+  const [activeTab, setActiveTab] = useState("posts");
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -156,6 +160,19 @@ const BlogPage = () => {
   const [viewJson, setViewJson] = useState(false);
 
   const pageSize = 10;
+
+  // Simple toast helper (displays via error banner or can be extended)
+  const showToast = (message, type = "info") => {
+    if (type === "error") {
+      setError(message);
+    } else if (type === "success") {
+      setError(""); // clear errors on success
+      // Could integrate with a proper toast library here
+      console.log(`✅ ${message}`);
+    } else {
+      console.log(`ℹ️ ${message}`);
+    }
+  };
 
   const loadPosts = async (targetPage = page) => {
     setLoading(true);
@@ -249,84 +266,84 @@ const BlogPage = () => {
     }
   };
 
- const handleBlogJsonUpload = async (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
+  const handleBlogJsonUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  // ✅ Use blog-specific validation
-  const validation = validateBlogFile(file, "json");
-  if (!validation.valid) {
-    setError(validation.error);
-    event.target.value = "";
-    return;
-  }
-
-  setUploading(true);
-  setError("");
-  setUploadResults([]);
-
-  try {
-    // ✅ Use blog-specific file reader
-    const text = await readBlogFileAsText(file);
-    
-    // ✅ Use blog-specific JSON parser
-    const parsed = parseBlogJSON(text);
-
-    if (!parsed.success) {
-      setError(`Invalid JSON format: ${parsed.error}`);
+    // ✅ Use blog-specific validation
+    const validation = validateBlogFile(file, "json");
+    if (!validation.valid) {
+      setError(validation.error);
       event.target.value = "";
-      setUploading(false);
       return;
     }
 
-    console.log("🔍 Detected format:", parsed.importType);
-    console.log("📦 Normalized payload:", parsed.data);
+    setUploading(true);
+    setError("");
+    setUploadResults([]);
 
-    // ✅ Send normalized payload to backend
-    const response = await importBlogPosts(parsed.data);
+    try {
+      // ✅ Use blog-specific file reader
+      const text = await readBlogFileAsText(file);
 
-    const created = response?.created || 0;
-    const updated = response?.updated || 0;
-    const errors = response?.errors || [];
+      // ✅ Use blog-specific JSON parser
+      const parsed = parseBlogJSON(text);
 
-    const results = [];
-    if (created || updated) {
-      results.push({
-        post: "Blog import summary",
-        success: true,
-        message: `Created: ${created}, Updated: ${updated}`,
+      if (!parsed.success) {
+        setError(`Invalid JSON format: ${parsed.error}`);
+        event.target.value = "";
+        setUploading(false);
+        return;
+      }
+
+      console.log("🔍 Detected format:", parsed.importType);
+      console.log("📦 Normalized payload:", parsed.data);
+
+      // ✅ Send normalized payload to backend
+      const response = await importBlogPosts(parsed.data);
+
+      const created = response?.created || 0;
+      const updated = response?.updated || 0;
+      const errors = response?.errors || [];
+
+      const results = [];
+      if (created || updated) {
+        results.push({
+          post: "Blog import summary",
+          success: true,
+          message: `Created: ${created}, Updated: ${updated}`,
+        });
+      }
+
+      errors.forEach((err, index) => {
+        results.push({
+          post: err?.slug || (typeof err?.index === "number" ? `Post ${err.index + 1}` : `Post ${index + 1}`),
+          success: false,
+          message: err?.detail || err?.message || "Import failed",
+        });
       });
+
+      if (!results.length) {
+        results.push({
+          post: "Blog import",
+          success: response?.ok === true,
+          message: response?.ok ? "Import completed" : "Import failed",
+        });
+      }
+
+      setUploadResults(results);
+      await loadPosts(1);
+    } catch (err) {
+      console.error("❌ Blog import error:", err);
+      setError(err?.message || "Failed to import blog posts.");
+      setUploadResults([
+        { post: "Blog import", success: false, message: err?.message || "Import failed" },
+      ]);
+    } finally {
+      setUploading(false);
+      event.target.value = "";
     }
-
-    errors.forEach((err, index) => {
-      results.push({
-        post: err?.slug || (typeof err?.index === "number" ? `Post ${err.index + 1}` : `Post ${index + 1}`),
-        success: false,
-        message: err?.detail || err?.message || "Import failed",
-      });
-    });
-
-    if (!results.length) {
-      results.push({
-        post: "Blog import",
-        success: response?.ok === true,
-        message: response?.ok ? "Import completed" : "Import failed",
-      });
-    }
-
-    setUploadResults(results);
-    await loadPosts(1);
-  } catch (err) {
-    console.error("❌ Blog import error:", err);
-    setError(err?.message || "Failed to import blog posts.");
-    setUploadResults([
-      { post: "Blog import", success: false, message: err?.message || "Import failed" },
-    ]);
-  } finally {
-    setUploading(false);
-    event.target.value = "";
-  }
-};
+  };
 
 
   const handleDownloadTemplate = () => {
@@ -623,6 +640,12 @@ const BlogPage = () => {
   const editorTitle =
     editorMode === "create" ? "Create Blog Post" : editorMode === "edit" ? "Edit Blog Post" : "Blog Details";
 
+  const tabs = [
+    { id: "posts", label: "Posts", icon: <Eye size={16} /> },
+    { id: "import", label: "Import", icon: <FileJson size={16} /> },
+    { id: "gallery", label: "Gallery", icon: <Layers size={16} /> },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -640,199 +663,233 @@ const BlogPage = () => {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card title="Total">
-          <p className="text-xs text-slate-500">All posts (filtered)</p>
-          <div className="text-2xl font-semibold text-slate-900 mt-2">{totalCount}</div>
-        </Card>
-        <Card title="Published">
-          <p className="text-xs text-slate-500">Visible on site</p>
-          <div className="text-2xl font-semibold text-slate-900 mt-2">{statusCounts.published}</div>
-        </Card>
-        <Card title="Drafts">
-          <p className="text-xs text-slate-500">Needs review</p>
-          <div className="text-2xl font-semibold text-slate-900 mt-2">{statusCounts.draft}</div>
-        </Card>
-        <Card title="Scheduled">
-          <p className="text-xs text-slate-500">Future publish</p>
-          <div className="text-2xl font-semibold text-slate-900 mt-2">{statusCounts.scheduled}</div>
-        </Card>
+      {/* Tabs */}
+      <div className="border-b border-slate-200">
+        <nav className="flex gap-0">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${activeTab === tab.id
+                  ? "text-violet-700 border-violet-600 bg-violet-50/50"
+                  : "text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300"
+                }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
-      <Card
-        title={`Blog Stories (${totalCount})`}
-        actions={
-          <div className="flex gap-2">
-            <Button variant="secondary" icon={<Filter size={18} />}>
-              Filters
-            </Button>
-            <Button variant="secondary" icon={<Download size={18} />}>
-              Export
-            </Button>
+      {/* ===================== POSTS TAB ===================== */}
+      {activeTab === "posts" && (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card title="Total">
+              <p className="text-xs text-slate-500">All posts (filtered)</p>
+              <div className="text-2xl font-semibold text-slate-900 mt-2">{totalCount}</div>
+            </Card>
+            <Card title="Published">
+              <p className="text-xs text-slate-500">Visible on site</p>
+              <div className="text-2xl font-semibold text-slate-900 mt-2">{statusCounts.published}</div>
+            </Card>
+            <Card title="Drafts">
+              <p className="text-xs text-slate-500">Needs review</p>
+              <div className="text-2xl font-semibold text-slate-900 mt-2">{statusCounts.draft}</div>
+            </Card>
+            <Card title="Scheduled">
+              <p className="text-xs text-slate-500">Future publish</p>
+              <div className="text-2xl font-semibold text-slate-900 mt-2">{statusCounts.scheduled}</div>
+            </Card>
           </div>
-        }
-      >
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
-        )}
 
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mb-4">
-          <Input
-            placeholder="Search title, slug, author..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            icon={<Search size={16} />}
-          />
-          <select
-            className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+          <Card
+            title={`Blog Stories (${totalCount})`}
+            actions={
+              <div className="flex gap-2">
+                <Button variant="secondary" icon={<Filter size={18} />}>
+                  Filters
+                </Button>
+                <Button variant="secondary" icon={<Download size={18} />}>
+                  Export
+                </Button>
+              </div>
+            }
           >
-            <option value="all">All statuses</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="archived">Archived</option>
-          </select>
-          <select
-            className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg"
-            value={languageFilter}
-            onChange={(e) => setLanguageFilter(e.target.value)}
-          >
-            {languages.map((lang) => (
-              <option key={lang} value={lang}>
-                {lang === "all" ? "All languages" : lang}
-              </option>
-            ))}
-          </select>
-          <select
-            className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category === "all" ? "All categories" : category}
-              </option>
-            ))}
-          </select>
-        </div>
+            {error && (
+              <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
+            )}
 
-        <div className="flex items-center gap-2 mb-4">
-          <Button variant="secondary" onClick={() => loadPosts(1)}>
-            Apply Filters
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setSearch("");
-              setStatusFilter("all");
-              setLanguageFilter("all");
-              setCategoryFilter("all");
-              loadPosts(1);
-            }}
-          >
-            Reset
-          </Button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-200">
-                {columns.map((col, idx) => (
-                  <th
-                    key={idx}
-                    className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
-                  >
-                    {col.header}
-                  </th>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mb-4">
+              <Input
+                placeholder="Search title, slug, author..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                icon={<Search size={16} />}
+              />
+              <select
+                className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All statuses</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="archived">Archived</option>
+              </select>
+              <select
+                className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg"
+                value={languageFilter}
+                onChange={(e) => setLanguageFilter(e.target.value)}
+              >
+                {languages.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang === "all" ? "All languages" : lang}
+                  </option>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {loading && (
-                <tr>
-                  <td colSpan={columns.length} className="px-6 py-6 text-sm text-slate-500">
-                    Loading blog posts...
-                  </td>
-                </tr>
-              )}
-              {!loading && posts.length === 0 && (
-                <tr>
-                  <td colSpan={columns.length} className="px-6 py-6 text-sm text-slate-500">
-                    No blog posts found.
-                  </td>
-                </tr>
-              )}
-              {!loading &&
-                posts.map((row, rowIdx) => (
-                  <tr key={row.id || rowIdx} className="hover:bg-slate-50 transition-colors">
-                    {columns.map((col, colIdx) => (
-                      <td key={colIdx} className="px-6 py-4 text-sm text-slate-900">
-                        {col.render ? col.render(row) : row[col.key]}
-                      </td>
+              </select>
+              <select
+                className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-lg"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category === "all" ? "All categories" : category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 mb-4">
+              <Button variant="secondary" onClick={() => loadPosts(1)}>
+                Apply Filters
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setLanguageFilter("all");
+                  setCategoryFilter("all");
+                  loadPosts(1);
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    {columns.map((col, idx) => (
+                      <th
+                        key={idx}
+                        className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                      >
+                        {col.header}
+                      </th>
                     ))}
                   </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            Page {page} of {totalPages}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => loadPosts(Math.max(1, page - 1))}
-              className={page <= 1 ? "opacity-50 pointer-events-none" : ""}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => loadPosts(Math.min(totalPages, page + 1))}
-              className={page >= totalPages ? "opacity-50 pointer-events-none" : ""}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      <Card title="Bulk Import Blog Posts">
-        <div className="space-y-6">
-          <UploadCard
-            title="Upload JSON File"
-            description="Upload a JSON file with full blog import structure"
-            Icon={FileJson}
-            iconColor="text-blue-600"
-            buttonText={uploading ? "Uploading..." : "Choose JSON File"}
-            buttonColor="bg-blue-600"
-            onUpload={handleBlogJsonUpload}
-            onDownloadTemplate={handleDownloadTemplate}
-            accept=".json"
-            disabled={uploading}
-            inputId="blog-json-upload"
-          />
-
-          {uploading && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <p className="text-sm text-gray-700">Uploading blog posts...</p>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {loading && (
+                    <tr>
+                      <td colSpan={columns.length} className="px-6 py-6 text-sm text-slate-500">
+                        Loading blog posts...
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && posts.length === 0 && (
+                    <tr>
+                      <td colSpan={columns.length} className="px-6 py-6 text-sm text-slate-500">
+                        No blog posts found.
+                      </td>
+                    </tr>
+                  )}
+                  {!loading &&
+                    posts.map((row, rowIdx) => (
+                      <tr key={row.id || rowIdx} className="hover:bg-slate-50 transition-colors">
+                        {columns.map((col, colIdx) => (
+                          <td key={colIdx} className="px-6 py-4 text-sm text-slate-900">
+                            {col.render ? col.render(row) : row[col.key]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
-          )}
 
-          {uploadResults.length > 0 && !uploading && (
-            <BlogUploadResults results={uploadResults} onClear={handleClearUploadResults} onViewList={() => loadPosts(1)} />
-          )}
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-slate-500">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => loadPosts(Math.max(1, page - 1))}
+                  className={page <= 1 ? "opacity-50 pointer-events-none" : ""}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => loadPosts(Math.min(totalPages, page + 1))}
+                  className={page >= totalPages ? "opacity-50 pointer-events-none" : ""}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
 
-          <BlogUploadInstructions />
-        </div>
-      </Card>
+      {/* ===================== IMPORT TAB ===================== */}
+      {activeTab === "import" && (
+        <Card title="Bulk Import Blog Posts">
+          <div className="space-y-6">
+            <UploadCard
+              title="Upload JSON File"
+              description="Upload a JSON file with full blog import structure"
+              Icon={FileJson}
+              iconColor="text-blue-600"
+              buttonText={uploading ? "Uploading..." : "Choose JSON File"}
+              buttonColor="bg-blue-600"
+              onUpload={handleBlogJsonUpload}
+              onDownloadTemplate={handleDownloadTemplate}
+              accept=".json"
+              disabled={uploading}
+              inputId="blog-json-upload"
+            />
+
+            {uploading && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <p className="text-sm text-gray-700">Uploading blog posts...</p>
+              </div>
+            )}
+
+            {uploadResults.length > 0 && !uploading && (
+              <BlogUploadResults results={uploadResults} onClear={handleClearUploadResults} onViewList={() => loadPosts(1)} />
+            )}
+
+            <BlogUploadInstructions />
+          </div>
+        </Card>
+      )}
+
+      {/* ===================== GALLERY TAB ===================== */}
+      {activeTab === "gallery" && (
+        <BlogImageUpload
+          showToast={showToast}
+        />
+      )}
 
       <Modal
         isOpen={editorOpen}

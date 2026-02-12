@@ -1,15 +1,18 @@
 // src/hooks/useGalleryUpload.js
 /**
- * useGalleryUpload Hook
+ * useGalleryUpload Hook - PRODUCTION VERSION
  * 
  * Production-grade custom hook for managing image uploads (hero and gallery)
- * for both treks and tours.
+ * for both treks and tours with full CRUD operations.
+ * 
+ * CRITICAL FIX: 
+ * - GET requests use PUBLIC endpoints: /api/treks/{slug}/hero/ and /api/treks/{slug}/gallery/
+ * - POST/PATCH/DELETE use ADMIN endpoints: /api/admin/treks/{slug}/media/hero/
  * 
  * Features:
- * - Upload hero images
- * - Upload multiple gallery images
- * - Update image metadata
- * - Delete images
+ * - Upload/Update/Delete hero images
+ * - Upload/Update/Delete gallery images
+ * - Fetch existing images
  * - Progress tracking
  * - Comprehensive error handling
  * - Support for both treks and tours
@@ -18,18 +21,20 @@
 
 import { useState, useCallback } from "react";
 import adminApi from "../components/api/admin.api";
+import axios from "axios";
 
 // Constants
-const MAX_GALLERY_IMAGES = 10;
+const MAX_GALLERY_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const SUPPORTED_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_RETRIES = 2;
 
+// Get API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
+
 /**
  * Validate image file
- * @param {File} file - File to validate
- * @returns {{valid: boolean, error?: string}}
  */
 const validateImageFile = (file) => {
   if (!file) {
@@ -41,16 +46,16 @@ const validateImageFile = (file) => {
   }
 
   if (!SUPPORTED_FORMATS.includes(file.type)) {
-    return { 
-      valid: false, 
-      error: `Unsupported format. Please use ${SUPPORTED_FORMATS.join(', ')}` 
+    return {
+      valid: false,
+      error: `Unsupported format. Please use ${SUPPORTED_FORMATS.join(', ')}`
     };
   }
 
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { 
-      valid: false, 
-      error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds ${MAX_FILE_SIZE_MB}MB limit` 
+    return {
+      valid: false,
+      error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds ${MAX_FILE_SIZE_MB}MB limit`
     };
   }
 
@@ -59,14 +64,10 @@ const validateImageFile = (file) => {
 
 /**
  * Extract error message from error object
- * @param {Error} error - Error object
- * @param {string} fallback - Fallback error message
- * @returns {string}
  */
 const extractErrorMessage = (error, fallback = 'Operation failed') => {
   if (!error) return fallback;
 
-  // Check response data
   if (error.response) {
     const data = error.response.data;
     if (data?.detail) return data.detail;
@@ -75,33 +76,106 @@ const extractErrorMessage = (error, fallback = 'Operation failed') => {
     if (typeof data === 'string') return data;
   }
 
-  // Check error message
   if (error.message) return error.message;
 
-  // Fallback
   return fallback;
 };
 
 /**
  * Sleep function for retry delays
- * @param {number} ms - Milliseconds to sleep
- * @returns {Promise<void>}
  */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const useGalleryUpload = () => {
   const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   /**
-   * Upload hero image with retry logic
+   * Fetch existing hero image
+   * Uses PUBLIC endpoint: /api/treks/{slug}/hero/ or /api/tours/{slug}/hero/
+   * 
    * @param {string} slug - Resource slug
-   * @param {File} imageFile - Hero image file
-   * @param {Function} onProgress - Progress callback (0-100)
    * @param {string} type - Resource type ('treks' or 'tours')
    * @returns {Promise<{success: boolean, error?: string, data?: any}>}
    */
+  const getHeroImage = useCallback(async (slug, type = 'treks') => {
+    if (!slug || typeof slug !== 'string') {
+      return { success: false, error: 'Invalid slug provided' };
+    }
+
+    const resourceType = type === 'tours' ? 'tours' : 'treks';
+    setLoading(true);
+
+    try {
+      // CRITICAL: Use PUBLIC endpoint for GET
+      const response = await axios.get(`${API_BASE_URL}/${resourceType}/${slug}/hero/`);
+      const data = response.data;
+
+      setLoading(false);
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      setLoading(false);
+      const errorMessage = extractErrorMessage(error, 'Failed to fetch hero image');
+      console.error("Fetch hero image error:", error);
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }, []);
+
+  /**
+   * Fetch existing gallery images
+   * Uses PUBLIC endpoint: /api/treks/{slug}/gallery/ or /api/tours/{slug}/gallery/
+   * 
+   * @param {string} slug - Resource slug
+   * @param {string} type - Resource type ('treks' or 'tours')
+   * @returns {Promise<{success: boolean, error?: string, data?: any[], count?: number}>}
+   */
+  const getGalleryImages = useCallback(async (slug, type = 'treks') => {
+    if (!slug || typeof slug !== 'string') {
+      return { success: false, error: 'Invalid slug provided' };
+    }
+
+    const resourceType = type === 'tours' ? 'tours' : 'treks';
+    setLoading(true);
+
+    try {
+      // CRITICAL: Use PUBLIC endpoint for GET
+      const response = await axios.get(`${API_BASE_URL}/${resourceType}/${slug}/gallery/`);
+      const data = response.data;
+
+      // Handle paginated response
+      const images = data?.results || (Array.isArray(data) ? data : []);
+      const count = data?.count || images.length;
+
+      setLoading(false);
+      return {
+        success: true,
+        data: images,
+        count: count,
+      };
+    } catch (error) {
+      setLoading(false);
+      const errorMessage = extractErrorMessage(error, 'Failed to fetch gallery images');
+      console.error("Fetch gallery images error:", error);
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }, []);
+
+  /**
+   * Upload hero image with retry logic
+   * Uses ADMIN endpoint: /api/admin/treks/{slug}/media/hero/
+   */
   const uploadHeroImage = useCallback(async (slug, imageFile, onProgress, type = 'treks') => {
-    // Validate inputs
     if (!slug || typeof slug !== 'string') {
       return { success: false, error: 'Invalid slug provided' };
     }
@@ -115,18 +189,18 @@ export const useGalleryUpload = () => {
     setUploading(true);
 
     let lastError = null;
-    
-    // Retry logic
+
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         if (attempt > 0) {
           console.log(`Retrying hero image upload (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
-          await sleep(1000 * attempt); // Exponential backoff
+          await sleep(1000 * attempt);
         }
 
         const formData = new FormData();
         formData.append("image", imageFile);
 
+        // Use ADMIN endpoint for POST
         const response = await adminApi.post(
           `/${resourceType}/${slug}/media/hero/`,
           formData,
@@ -147,26 +221,22 @@ export const useGalleryUpload = () => {
 
         setUploading(false);
 
-        const data = response.data || response;
-        
         return {
           success: true,
-          data: data,
-          url: data.hero_image_url || data.url,
+          data: response,
+          url: response.hero_image_url || response.url || response.image_url,
         };
       } catch (error) {
         lastError = error;
-        
-        // Don't retry on client errors (4xx)
+
         if (error.response?.status >= 400 && error.response?.status < 500) {
           break;
         }
       }
     }
 
-    // All retries failed
     setUploading(false);
-    
+
     const errorMessage = extractErrorMessage(lastError, 'Failed to upload hero image');
     console.error("Hero image upload error:", lastError);
 
@@ -178,14 +248,9 @@ export const useGalleryUpload = () => {
 
   /**
    * Upload gallery images with retry logic
-   * @param {string} slug - Resource slug
-   * @param {File[]} imageFiles - Array of gallery image files
-   * @param {Function} onProgress - Progress callback (0-100)
-   * @param {string} type - Resource type ('treks' or 'tours')
-   * @returns {Promise<{success: boolean, error?: string, data?: any, count?: number, items?: any[]}>}
+   * Uses ADMIN endpoint: /api/admin/treks/{slug}/media/gallery/
    */
   const uploadGalleryImages = useCallback(async (slug, imageFiles, onProgress, type = 'treks') => {
-    // Validate inputs
     if (!slug || typeof slug !== 'string') {
       return { success: false, error: 'Invalid slug provided' };
     }
@@ -195,13 +260,12 @@ export const useGalleryUpload = () => {
     }
 
     if (imageFiles.length > MAX_GALLERY_IMAGES) {
-      return { 
-        success: false, 
-        error: `Maximum ${MAX_GALLERY_IMAGES} gallery images allowed` 
+      return {
+        success: false,
+        error: `Maximum ${MAX_GALLERY_IMAGES} gallery images allowed per upload`
       };
     }
 
-    // Validate each file
     const invalidFiles = [];
     imageFiles.forEach((file, index) => {
       const validation = validateImageFile(file);
@@ -211,9 +275,9 @@ export const useGalleryUpload = () => {
     });
 
     if (invalidFiles.length > 0) {
-      return { 
-        success: false, 
-        error: `Invalid images: ${invalidFiles.join('; ')}` 
+      return {
+        success: false,
+        error: `Invalid images: ${invalidFiles.join('; ')}`
       };
     }
 
@@ -222,21 +286,20 @@ export const useGalleryUpload = () => {
 
     let lastError = null;
 
-    // Retry logic
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         if (attempt > 0) {
           console.log(`Retrying gallery upload (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
-          await sleep(1000 * attempt); // Exponential backoff
+          await sleep(1000 * attempt);
         }
 
         const formData = new FormData();
 
-        // Append all images with the key 'images'
         imageFiles.forEach((file) => {
           formData.append("images", file);
         });
 
+        // Use ADMIN endpoint for POST
         const response = await adminApi.post(
           `/${resourceType}/${slug}/media/gallery/`,
           formData,
@@ -256,27 +319,24 @@ export const useGalleryUpload = () => {
         );
 
         setUploading(false);
-        const data = response.data || response;
 
         return {
           success: true,
-          data: data,
-          count: data.uploaded || imageFiles.length,
-          items: data.items || [],
+          data: response,
+          count: response.uploaded || imageFiles.length,
+          items: response.items || [],
         };
       } catch (error) {
         lastError = error;
-        
-        // Don't retry on client errors (4xx)
+
         if (error.response?.status >= 400 && error.response?.status < 500) {
           break;
         }
       }
     }
 
-    // All retries failed
     setUploading(false);
-    
+
     const errorMessage = extractErrorMessage(lastError, 'Failed to upload gallery images');
     console.error("Gallery images upload error:", lastError);
 
@@ -287,14 +347,10 @@ export const useGalleryUpload = () => {
   }, []);
 
   /**
-   * Update hero image metadata or replace image
-   * @param {string} slug - Resource slug
-   * @param {File|null} imageFile - Optional new image file
-   * @param {Object} metadata - Metadata (image_alt, image_caption)
-   * @param {string} type - Resource type ('treks' or 'tours')
-   * @returns {Promise<{success: boolean, error?: string}>}
+   * Update hero image (replace image or update metadata)
+   * Uses ADMIN endpoint: /api/admin/treks/{slug}/media/hero/
    */
-  const updateHeroImage = useCallback(async (slug, imageFile = null, metadata = {}, type = 'treks') => {
+  const updateHeroImage = useCallback(async (slug, imageFile = null, metadata = {}, onProgress, type = 'treks') => {
     if (!slug || typeof slug !== 'string') {
       return { success: false, error: 'Invalid slug provided' };
     }
@@ -307,6 +363,7 @@ export const useGalleryUpload = () => {
     }
 
     const resourceType = type === 'tours' ? 'tours' : 'treks';
+    setUploading(true);
 
     try {
       const formData = new FormData();
@@ -315,14 +372,12 @@ export const useGalleryUpload = () => {
         formData.append("image", imageFile);
       }
 
-      if (metadata.image_alt) {
-        formData.append("image_alt", metadata.image_alt);
+      // Add metadata if provided
+      if (Object.keys(metadata).length > 0) {
+        formData.append("metadata", JSON.stringify([metadata]));
       }
 
-      if (metadata.image_caption) {
-        formData.append("image_caption", metadata.image_caption);
-      }
-
+      // Use ADMIN endpoint for PATCH
       const response = await adminApi.patch(
         `/${resourceType}/${slug}/media/hero/`,
         formData,
@@ -330,14 +385,25 @@ export const useGalleryUpload = () => {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          onUploadProgress: (progressEvent) => {
+            if (onProgress && progressEvent.total) {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              onProgress(percentCompleted);
+            }
+          },
         }
       );
 
+      setUploading(false);
+
       return {
         success: true,
-        data: response.data || response,
+        data: response,
       };
     } catch (error) {
+      setUploading(false);
       const errorMessage = extractErrorMessage(error, 'Failed to update hero image');
       console.error("Hero image update error:", error);
 
@@ -350,9 +416,7 @@ export const useGalleryUpload = () => {
 
   /**
    * Delete hero image
-   * @param {string} slug - Resource slug
-   * @param {string} type - Resource type ('treks' or 'tours')
-   * @returns {Promise<{success: boolean, error?: string}>}
+   * Uses ADMIN endpoint: /api/admin/treks/{slug}/media/hero/
    */
   const deleteHeroImage = useCallback(async (slug, type = 'treks') => {
     if (!slug || typeof slug !== 'string') {
@@ -362,6 +426,7 @@ export const useGalleryUpload = () => {
     const resourceType = type === 'tours' ? 'tours' : 'treks';
 
     try {
+      // Use ADMIN endpoint for DELETE
       await adminApi.delete(`/${resourceType}/${slug}/media/hero/`);
 
       return {
@@ -380,14 +445,9 @@ export const useGalleryUpload = () => {
 
   /**
    * Update a gallery image
-   * @param {string} slug - Resource slug
-   * @param {number} imageId - Image ID
-   * @param {File|null} imageFile - Optional new image file
-   * @param {Object} metadata - Metadata (caption, alt_text, order)
-   * @param {string} type - Resource type ('treks' or 'tours')
-   * @returns {Promise<{success: boolean, error?: string}>}
+   * Uses ADMIN endpoint: /api/admin/treks/{slug}/media/gallery/{id}/
    */
-  const updateGalleryImage = useCallback(async (slug, imageId, imageFile = null, metadata = {}, type = 'treks') => {
+  const updateGalleryImage = useCallback(async (slug, imageId, imageFile = null, metadata = {}, onProgress, type = 'treks') => {
     if (!slug || typeof slug !== 'string') {
       return { success: false, error: 'Invalid slug provided' };
     }
@@ -404,6 +464,7 @@ export const useGalleryUpload = () => {
     }
 
     const resourceType = type === 'tours' ? 'tours' : 'treks';
+    setUploading(true);
 
     try {
       const formData = new FormData();
@@ -412,18 +473,20 @@ export const useGalleryUpload = () => {
         formData.append("image", imageFile);
       }
 
-      if (metadata.caption !== undefined) {
-        formData.append("caption", metadata.caption);
+      // Add metadata if provided
+      if (Object.keys(metadata).length > 0) {
+        if (metadata.caption !== undefined) {
+          formData.append("caption", metadata.caption);
+        }
+        if (metadata.alt_text !== undefined) {
+          formData.append("alt_text", metadata.alt_text);
+        }
+        if (metadata.order !== undefined) {
+          formData.append("order", metadata.order.toString());
+        }
       }
 
-      if (metadata.alt_text !== undefined) {
-        formData.append("alt_text", metadata.alt_text);
-      }
-
-      if (metadata.order !== undefined) {
-        formData.append("order", metadata.order.toString());
-      }
-
+      // Use ADMIN endpoint for PATCH
       const response = await adminApi.patch(
         `/${resourceType}/${slug}/media/gallery/${imageId}/`,
         formData,
@@ -431,14 +494,25 @@ export const useGalleryUpload = () => {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          onUploadProgress: (progressEvent) => {
+            if (onProgress && progressEvent.total) {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              onProgress(percentCompleted);
+            }
+          },
         }
       );
 
+      setUploading(false);
+
       return {
         success: true,
-        data: response.data || response,
+        data: response,
       };
     } catch (error) {
+      setUploading(false);
       const errorMessage = extractErrorMessage(error, 'Failed to update gallery image');
       console.error("Gallery image update error:", error);
 
@@ -451,10 +525,7 @@ export const useGalleryUpload = () => {
 
   /**
    * Delete a gallery image
-   * @param {string} slug - Resource slug
-   * @param {number} imageId - Image ID to delete
-   * @param {string} type - Resource type ('treks' or 'tours')
-   * @returns {Promise<{success: boolean, error?: string}>}
+   * Uses ADMIN endpoint: /api/admin/treks/{slug}/media/gallery/{id}/
    */
   const deleteGalleryImage = useCallback(async (slug, imageId, type = 'treks') => {
     if (!slug || typeof slug !== 'string') {
@@ -468,6 +539,7 @@ export const useGalleryUpload = () => {
     const resourceType = type === 'tours' ? 'tours' : 'treks';
 
     try {
+      // Use ADMIN endpoint for DELETE
       await adminApi.delete(`/${resourceType}/${slug}/media/gallery/${imageId}/`);
 
       return {
@@ -484,48 +556,17 @@ export const useGalleryUpload = () => {
     }
   }, []);
 
-  /**
-   * Get all images for a resource
-   * @param {string} slug - Resource slug
-   * @param {string} type - Resource type ('treks' or 'tours')
-   * @returns {Promise<{success: boolean, error?: string, hero?: any, gallery?: any[]}>}
-   */
-  const getResourceImages = useCallback(async (slug, type = 'treks') => {
-    if (!slug || typeof slug !== 'string') {
-      return { success: false, error: 'Invalid slug provided' };
-    }
-
-    const resourceType = type === 'tours' ? 'tours' : 'treks';
-
-    try {
-      const response = await adminApi.get(`/${resourceType}/${slug}/media/`);
-      const data = response.data || response;
-
-      return {
-        success: true,
-        hero: data.hero || null,
-        gallery: Array.isArray(data.gallery) ? data.gallery : [],
-      };
-    } catch (error) {
-      const errorMessage = extractErrorMessage(error, 'Failed to fetch images');
-      console.error("Fetch images error:", error);
-
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    }
-  }, []);
-
   return {
     uploading,
+    loading,
     uploadHeroImage,
     uploadGalleryImages,
     updateHeroImage,
     deleteHeroImage,
     updateGalleryImage,
     deleteGalleryImage,
-    getResourceImages,
+    getHeroImage,
+    getGalleryImages,
     // Utility exports
     validateImageFile,
     MAX_GALLERY_IMAGES,
