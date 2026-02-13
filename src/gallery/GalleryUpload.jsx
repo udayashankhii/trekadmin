@@ -1006,7 +1006,7 @@ const GalleryUpload = ({ type = 'treks', onViewList, showToast }) => {
                               alt={image.altText || image.alt_text || image.alt || 'Gallery image'}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                console.error('Failed to load gallery image:', imageUrl);
+                                // console.error('Failed to load gallery image:', imageUrl);
                                 e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgZm91bmQ8L3RleHQ+PC9zdmc+';
                               }}
                             />

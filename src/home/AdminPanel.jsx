@@ -25,7 +25,7 @@ const AdminPanel = () => {
      const titles = {
     dashboard: { title: 'Admin Dashboard', subtitle: 'Welcome back, Admin' },
     treks: { title: 'Treks Management', subtitle: 'Manage all your trek packages' },
-    tours: { title: 'Tours Management', subtitle: 'Manage all your tour packages' },
+    // tours: { title: 'Tours Management', subtitle: 'Manage all your tour packages' },
     bookings: { title: 'Bookings', subtitle: 'Track and manage all bookings' },
     blogs: { title: 'Blogs Admin', subtitle: 'Review and manage blog stories' },
     users: { title: 'Users Management', subtitle: 'Manage user accounts' },

@@ -17,7 +17,7 @@ const Sidebar = ({ activeItem, isMobileOpen, setIsMobileOpen }) => {
   const navItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
     { path: "/treks", icon: Mountain, label: "Treks", key: "treks" },
-    { path: "/tours", icon: Plane, label: "Tours", key: "tours" },
+    // { path: "/tours", icon: Plane, label: "Tours", key: "tours" },
     // { path: "/cloudinary", icon: Cloud, label: "Cloudinary", key: "cloudinary" },  // ✅ ADD THIS
     { path: "/bookings", icon: Calendar, label: "Bookings", key: "bookings" },
     { path: "/blogs", icon: FileText, label: "Blogs", key: "blogs" },
