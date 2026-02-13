@@ -12,6 +12,7 @@ import {
   Button,
   Stack,
   CircularProgress,
+  Alert,
 } from "@mui/material";
 
 import { useAdminAuth } from "../api/admin.service";
@@ -28,6 +29,7 @@ const LoginForm = () => {
   const [errors, setErrors] = useState({
     email: "",
     password: "",
+    general: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -41,8 +43,9 @@ const LoginForm = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+    // Clear errors when user starts typing
+    if (errors[name] || errors.general) {
+      setErrors((prev) => ({ ...prev, [name]: "", general: "" }));
     }
   };
 
@@ -50,6 +53,7 @@ const LoginForm = () => {
     const newErrors = {
       email: "",
       password: "",
+      general: "",
     };
 
     const trimmedEmail = formData.email.trim();
@@ -71,27 +75,74 @@ const LoginForm = () => {
     return !newErrors.email && !newErrors.password;
   };
 
-  const getErrorMessage = (error) => {
+  const handleBackendError = (error) => {
+    const newErrors = {
+      email: "",
+      password: "",
+      general: "",
+    };
+
+    // Handle different status codes
     if (error.status === 400) {
       const detail = error.data?.detail;
-      if (detail) return detail;
-      if (error.data?.email) return `Email: ${error.data.email.join(", ")}`;
-      if (error.data?.password) return `Password: ${error.data.password.join(", ")}`;
-      if (error.message) return error.message;
+      
+      // Check if detail contains password-related error
+      if (detail && typeof detail === "string") {
+        const lowerDetail = detail.toLowerCase();
+        
+        if (lowerDetail.includes("password")) {
+          newErrors.password = detail;
+        } else if (lowerDetail.includes("email")) {
+          newErrors.email = detail;
+        } else if (lowerDetail.includes("credentials") || lowerDetail.includes("invalid")) {
+          newErrors.general = detail;
+        } else {
+          newErrors.general = detail;
+        }
+      }
+      
+      // Handle field-specific errors from backend
+      if (error.data?.email) {
+        newErrors.email = Array.isArray(error.data.email) 
+          ? error.data.email.join(", ") 
+          : error.data.email;
+      }
+      
+      if (error.data?.password) {
+        newErrors.password = Array.isArray(error.data.password) 
+          ? error.data.password.join(", ") 
+          : error.data.password;
+      }
+      
+      // If no specific field error, show as general
+      if (!newErrors.email && !newErrors.password && !newErrors.general) {
+        newErrors.general = error.message || "Invalid request. Please check your input.";
+      }
+    } else if (error.status === 401) {
+      newErrors.general = "Invalid credentials. Please check your email and password.";
+    } else if (error.status === 403) {
+      newErrors.general = "Access denied. Admin privileges required.";
+    } else if (error.status === 404) {
+      newErrors.general = "Service not found. Please contact support.";
+    } else if (error.status >= 500) {
+      newErrors.general = "Server error. Please try again later.";
+    } else {
+      newErrors.general = error.message || "Login failed. Please try again.";
     }
+
+    setErrors(newErrors);
     
-    if (error.status === 401) return "Invalid credentials. Please check your email and password.";
-    if (error.status === 403) return "Access denied. Admin access required.";
-    if (error.message) return error.message;
-    
-    return "Login failed. Please try again.";
+    // Return a user-friendly message for toast if needed
+    return newErrors.general || "Please check the form for errors.";
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Clear previous errors
+    setErrors({ email: "", password: "", general: "" });
+
     if (!validateForm()) {
-      toast.error("Please fix the errors in the form");
       return;
     }
 
@@ -109,12 +160,19 @@ const LoginForm = () => {
           navigate("/dashboard", { replace: true });
         }, 300);
       } else {
-        const errorMessage = result.error || "Login failed. Please try again.";
-        toast.error(errorMessage);
+        // Handle error from result
+        if (result.error) {
+          const errorObj = typeof result.error === 'object' ? result.error : { message: result.error };
+          handleBackendError(errorObj);
+        } else {
+          setErrors((prev) => ({ 
+            ...prev, 
+            general: "Login failed. Please try again." 
+          }));
+        }
       }
     } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      toast.error(errorMessage);
+      handleBackendError(error);
     } finally {
       setLoading(false);
     }
@@ -169,6 +227,17 @@ const LoginForm = () => {
 
         <form onSubmit={handleSubmit} noValidate>
           <Stack spacing={3}>
+            {/* General Error Alert */}
+            {errors.general && (
+              <Alert 
+                severity="error" 
+                sx={{ mb: 1 }}
+                onClose={() => setErrors((prev) => ({ ...prev, general: "" }))}
+              >
+                {errors.general}
+              </Alert>
+            )}
+
             <TextField
               label="Email"
               name="email"
